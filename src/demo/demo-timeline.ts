@@ -30,27 +30,34 @@ const ARENA_DEF: ArenaDef = {
   boundary: 'wall',
 }
 
-// Boss fan AoE: instant ability, but zone has 3s telegraph + 3s resolve delay
-const BOSS_FAN: SkillDef = {
-  id: 'boss_fan',
-  name: '扇形斩',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 0,
-  gcd: false,
-  targetType: 'aoe',
-  requiresTarget: false,
-  range: 0,
-  zones: [{
-    anchor: { type: 'caster' },
-    direction: { type: 'caster_facing' },
-    shape: { type: 'fan', radius: 12, angle: 90 },
-    telegraphDuration: 3000,
-    resolveDelay: 3000,
-    hitEffectDuration: 500,
-    effects: [{ type: 'damage', potency: 15000 }],
-  }],
+// Fan AoE factory: fixed direction, boss doesn't need to turn
+function makeFan(id: string, name: string, angle: number): SkillDef {
+  return {
+    id,
+    name,
+    type: 'ability',
+    castTime: 0,
+    cooldown: 0,
+    gcd: false,
+    targetType: 'aoe',
+    requiresTarget: false,
+    range: 0,
+    zones: [{
+      anchor: { type: 'caster' },
+      direction: { type: 'fixed', angle },
+      shape: { type: 'fan', radius: 12, angle: 90 },
+      telegraphDuration: 3000,
+      resolveDelay: 3000,
+      hitEffectDuration: 500,
+      effects: [{ type: 'damage', potency: 15000 }],
+    }],
+  }
 }
+
+const FAN_SOUTH = makeFan('fan_south', '扇形斩・前', 180)
+const FAN_WEST = makeFan('fan_west', '扇形斩・右', 270)
+const FAN_NORTH = makeFan('fan_north', '扇形斩・后', 0)
+const FAN_EAST = makeFan('fan_east', '扇形斩・左', 90)
 
 // Enrage: massive circle, instant kill
 const ENRAGE_SKILL: SkillDef = {
@@ -75,25 +82,14 @@ const ENRAGE_SKILL: SkillDef = {
 }
 
 // Timeline: clockwise fan rotation every 5s, enrage at 30s
+// Boss stays facing south the whole time; fans use fixed directions
 const TIMELINE_ACTIONS: TimelineAction[] = [
-  // South (180°)
-  { at: 0, action: 'lock_facing', facing: 180 },
-  { at: 0, action: 'use', use: 'boss_fan' },
-  // West (270°)
-  { at: 5000, action: 'lock_facing', facing: 270 },
-  { at: 5000, action: 'use', use: 'boss_fan' },
-  // North (0°)
-  { at: 10000, action: 'lock_facing', facing: 0 },
-  { at: 10000, action: 'use', use: 'boss_fan' },
-  // East (90°)
-  { at: 15000, action: 'lock_facing', facing: 90 },
-  { at: 15000, action: 'use', use: 'boss_fan' },
-  // South again
-  { at: 20000, action: 'lock_facing', facing: 180 },
-  { at: 20000, action: 'use', use: 'boss_fan' },
-  // West again
-  { at: 25000, action: 'lock_facing', facing: 270 },
-  { at: 25000, action: 'use', use: 'boss_fan' },
+  { at: 0, action: 'use', use: 'fan_south' },
+  { at: 5000, action: 'use', use: 'fan_west' },
+  { at: 10000, action: 'use', use: 'fan_north' },
+  { at: 15000, action: 'use', use: 'fan_east' },
+  { at: 20000, action: 'use', use: 'fan_south' },
+  { at: 25000, action: 'use', use: 'fan_west' },
 ]
 
 const ENRAGE_CONFIG = { time: 30000, castTime: 10000, skill: 'enrage_blast' }
@@ -117,8 +113,9 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
 
   // --- Skill registry ---
   const skillMap = new Map<string, SkillDef>()
-  skillMap.set(BOSS_FAN.id, BOSS_FAN)
-  skillMap.set(ENRAGE_SKILL.id, ENRAGE_SKILL)
+  for (const s of [FAN_SOUTH, FAN_WEST, FAN_NORTH, FAN_EAST, ENRAGE_SKILL]) {
+    skillMap.set(s.id, s)
+  }
 
   // --- DevTools ---
   const commandRegistry = new CommandRegistry()
