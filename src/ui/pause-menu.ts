@@ -2,6 +2,7 @@
 export class PauseMenu {
   private container: HTMLDivElement
   private onResume: (() => void) | null = null
+  private onRetry: (() => void) | null = null
   private onQuit: (() => void) | null = null
   private _visible = false
 
@@ -34,6 +35,12 @@ export class PauseMenu {
     resumeBtn.addEventListener('click', () => this.onResume?.())
     this.container.appendChild(resumeBtn)
 
+    const retryBtn = document.createElement('button')
+    retryBtn.textContent = 'Retry'
+    retryBtn.style.cssText = btnStyle
+    retryBtn.addEventListener('click', () => this.onRetry?.())
+    this.container.appendChild(retryBtn)
+
     const quitBtn = document.createElement('button')
     quitBtn.textContent = 'Quit to Menu'
     quitBtn.style.cssText = btnStyle
@@ -56,5 +63,6 @@ export class PauseMenu {
   }
 
   onResumeGame(cb: () => void): void { this.onResume = cb }
+  onRetryGame(cb: () => void): void { this.onRetry = cb }
   onQuitGame(cb: () => void): void { this.onQuit = cb }
 }

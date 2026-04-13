@@ -89,6 +89,7 @@ export function startDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): vo
 
   let paused = false
   pauseMenu.onResumeGame(() => { paused = false; pauseMenu.hide() })
+  pauseMenu.onRetryGame(() => window.location.reload())
   pauseMenu.onQuitGame(() => window.location.reload())
 
   let lastTime = performance.now()

@@ -104,6 +104,7 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
   let paused = false
   let combatStartTime: number | null = null
   pauseMenu.onResumeGame(() => { paused = false; pauseMenu.hide() })
+  pauseMenu.onRetryGame(() => window.location.reload())
   pauseMenu.onQuitGame(() => window.location.reload())
 
   function engageCombat() {

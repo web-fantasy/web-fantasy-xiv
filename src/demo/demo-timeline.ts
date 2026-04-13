@@ -106,6 +106,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   let battleOver = false
 
   pauseMenu.onResumeGame(() => { paused = false; pauseMenu.hide() })
+  pauseMenu.onRetryGame(() => startTimelineDemo(canvas, uiRoot))
   pauseMenu.onQuitGame(() => window.location.reload())
 
   // --- Engage ---
