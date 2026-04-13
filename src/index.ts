@@ -54,3 +54,25 @@ export { TimelineScheduler } from './timeline/timeline-scheduler'
 
 // AI
 export { BossBehavior } from './ai/boss-behavior'
+
+// Renderer
+export { SceneManager } from './renderer/scene-manager'
+export { EntityRenderer } from './renderer/entity-renderer'
+export { AoeRenderer } from './renderer/aoe-renderer'
+export { ArenaRenderer } from './renderer/arena-renderer'
+export { HitEffectRenderer } from './renderer/hit-effect-renderer'
+
+// Input
+export { InputManager, computeMoveDirection, computeFacingAngle } from './input/input-manager'
+
+// UI
+export { UIManager } from './ui/ui-manager'
+export { MainMenu } from './ui/main-menu'
+export { PauseMenu } from './ui/pause-menu'
+
+// DevTools
+export { DevTerminal } from './devtools/dev-terminal'
+export { CommandRegistry } from './devtools/commands'
+
+// Demo
+export { startDemo } from './demo/demo-scene'
