@@ -42,7 +42,7 @@ export type DisplacementSource =
 export type SkillEffectDef =
   | { type: 'damage'; potency: number }
   | { type: 'heal'; potency: number }
-  | { type: 'apply_buff'; buffId: string }
+  | { type: 'apply_buff'; buffId: string; stacks?: number }
   | { type: 'dash' }                                                    // caster dashes to 1m from target
   | { type: 'backstep'; distance: number }                              // caster jumps backward from target
   | { type: 'knockback'; distance: number; source?: DisplacementSource } // push target away from source (default: caster)
@@ -80,6 +80,7 @@ export type BuffEffectDef =
   | { type: 'speed_modify'; value: number }
   | { type: 'dot'; potency: number; interval: number }
   | { type: 'hot'; potency: number; interval: number }
+  | { type: 'vulnerability'; value: number }  // per-stack damage taken increase (additive)
   | { type: 'silence' }
   | { type: 'stun' }
 

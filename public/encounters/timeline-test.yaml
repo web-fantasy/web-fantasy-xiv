@@ -97,7 +97,9 @@ skills:
         resolveDelay: 5000
         telegraphBefore: 5000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 15000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Right 180°: telegraph 4s before resolve, resolves at 7s
       - anchor: { type: caster }
         direction: { type: fixed, angle: 270 }
@@ -105,7 +107,9 @@ skills:
         resolveDelay: 7000
         telegraphBefore: 4000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 15000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   pull_cast:
     name: 引力漩渦

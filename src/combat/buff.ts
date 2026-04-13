@@ -12,19 +12,21 @@ export class BuffSystem {
     this.defs.set(def.id, def)
   }
 
-  applyBuff(entity: Entity, def: BuffDef, sourceId: string): void {
+  applyBuff(entity: Entity, def: BuffDef, sourceId: string, addStacks = 1): void {
     this.registerDef(def)
 
     const existing = entity.buffs.find((b) => b.defId === def.id)
     if (existing && !def.stackable) {
-      // Refresh duration
-      existing.remaining = def.duration
+      // Non-stackable: just refresh duration (take longer)
+      existing.remaining = Math.max(existing.remaining, def.duration)
       existing.sourceId = sourceId
       return
     }
-    if (existing && def.stackable && existing.stacks < def.maxStacks) {
-      existing.stacks++
-      existing.remaining = def.duration
+    if (existing && def.stackable) {
+      // Stackable: add stacks (capped), refresh duration (take longer)
+      existing.stacks = Math.min(existing.stacks + addStacks, def.maxStacks)
+      existing.remaining = Math.max(existing.remaining, def.duration)
+      existing.sourceId = sourceId
       return
     }
 
@@ -32,7 +34,7 @@ export class BuffSystem {
       defId: def.id,
       sourceId,
       remaining: def.duration,
-      stacks: 1,
+      stacks: Math.min(addStacks, def.maxStacks),
     })
 
     this.bus.emit('buff:applied', { target: entity, buff: def, source: sourceId })
@@ -83,6 +85,17 @@ export class BuffSystem {
     return this.collectEffects(entity)
       .filter((e) => e.effect.type === 'damage_increase')
       .map((e) => (e.effect as { type: 'damage_increase'; value: number }).value)
+  }
+
+  /** Get total vulnerability on target (additive, per-stack × stacks) */
+  getVulnerability(entity: Entity): number {
+    let total = 0
+    for (const { inst, effect } of this.collectEffects(entity)) {
+      if (effect.type === 'vulnerability') {
+        total += (effect as { type: 'vulnerability'; value: number }).value * inst.stacks
+      }
+    }
+    return total
   }
 
   isSilenced(entity: Entity): boolean {

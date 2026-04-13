@@ -66,11 +66,14 @@ export class CombatResolver {
           break
 
         case 'apply_buff': {
-          // Self-buff: apply to caster
-          const entity = caster ?? target
-          if (!entity) break
+          // Self-buff: apply to caster; AoE debuff: apply to target
           const buffDef = this.buffDefs.get(effect.buffId)
-          if (buffDef) this.buffSystem.applyBuff(entity, buffDef, entity.id)
+          if (!buffDef) break
+          // Debuffs apply to target, buffs apply to caster (self)
+          const buffTarget = buffDef.type === 'debuff' ? target : (caster ?? target)
+          if (!buffTarget) break
+          const stacks = effect.stacks ?? 1
+          this.buffSystem.applyBuff(buffTarget, buffDef, (caster ?? buffTarget).id, stacks)
           break
         }
 
@@ -124,10 +127,11 @@ export class CombatResolver {
   }
 
   private applyDamage(caster: Entity, target: Entity, potency: number): void {
+    const vulnerability = this.buffSystem.getVulnerability(target)
     const dmg = calculateDamage({
       attack: caster.attack,
       potency,
-      increases: this.buffSystem.getDamageIncreases(caster),
+      increases: [...this.buffSystem.getDamageIncreases(caster), vulnerability],
       mitigations: this.buffSystem.getMitigations(target),
     })
     target.hp = Math.max(0, target.hp - dmg)

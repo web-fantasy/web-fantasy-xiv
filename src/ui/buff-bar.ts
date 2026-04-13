@@ -39,6 +39,25 @@ export class BuffBar {
       arrow.style.color = isDebuff ? '#ff6666' : '#66ff66'
       el.style.borderColor = isDebuff ? 'rgba(255,80,80,0.4)' : 'rgba(80,255,80,0.4)'
 
+      // Stacks badge
+      let badge = el.querySelector('.stacks') as HTMLSpanElement | null
+      if (inst.stacks > 1) {
+        if (!badge) {
+          badge = document.createElement('span')
+          badge.className = 'stacks'
+          badge.style.cssText = `
+            position: absolute; bottom: -2px; right: -2px;
+            font-size: 9px; font-weight: bold; color: #fff;
+            background: rgba(0,0,0,0.8); border-radius: 2px;
+            padding: 0 2px; line-height: 1.2;
+          `
+          el.appendChild(badge)
+        }
+        badge.textContent = `${inst.stacks}`
+      } else if (badge) {
+        badge.remove()
+      }
+
       if (inst.remaining > 0) {
         timer.textContent = (inst.remaining / 1000).toFixed(0)
       } else {

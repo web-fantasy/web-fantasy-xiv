@@ -1,6 +1,15 @@
 import type { BuffDef } from '@/core/types'
 
 export const DEMO_BUFFS: Record<string, BuffDef> = {
+  vulnerability: {
+    id: 'vulnerability',
+    name: '易伤',
+    type: 'debuff',
+    duration: 8000,
+    stackable: true,
+    maxStacks: 16,
+    effects: [{ type: 'vulnerability', value: 0.1 }], // 10% per stack
+  },
   embolden: {
     id: 'embolden',
     name: '强化',
