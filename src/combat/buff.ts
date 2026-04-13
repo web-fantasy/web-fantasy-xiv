@@ -12,6 +12,10 @@ export class BuffSystem {
     this.defs.set(def.id, def)
   }
 
+  getDef(id: string): BuffDef | undefined {
+    return this.defs.get(id)
+  }
+
   applyBuff(entity: Entity, def: BuffDef, sourceId: string, addStacks = 1): void {
     this.registerDef(def)
 

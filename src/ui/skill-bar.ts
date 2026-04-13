@@ -1,13 +1,16 @@
 // src/ui/skill-bar.ts
 import type { SkillBarEntry } from './ui-manager'
+import { Tooltip, buildSkillTooltip } from './tooltip'
 
 export class SkillBar {
   private slots: HTMLDivElement[] = []
   private cooldownOverlays: HTMLDivElement[] = []
   private cooldownTexts: HTMLSpanElement[] = []
   private entries: SkillBarEntry[]
+  private tooltip: Tooltip
 
   constructor(parent: HTMLDivElement, entries: SkillBarEntry[]) {
+    this.tooltip = new Tooltip(parent)
     this.entries = entries
 
     const bar = document.createElement('div')
@@ -56,6 +59,17 @@ export class SkillBar {
         display: none;
       `
       slot.appendChild(cdText)
+
+      // Tooltip hover
+      slot.addEventListener('mouseenter', (ev) => {
+        const html = buildSkillTooltip(entry.skill as any)
+        this.tooltip.show(html, ev.clientX, ev.clientY)
+      })
+      slot.addEventListener('mousemove', (ev) => {
+        const html = buildSkillTooltip(entry.skill as any)
+        this.tooltip.show(html, ev.clientX, ev.clientY)
+      })
+      slot.addEventListener('mouseleave', () => this.tooltip.hide())
 
       this.slots.push(slot)
       this.cooldownOverlays.push(cdOverlay)

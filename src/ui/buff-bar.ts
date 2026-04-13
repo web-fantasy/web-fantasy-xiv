@@ -1,11 +1,14 @@
 // src/ui/buff-bar.ts
 import type { Entity, BuffInstance } from '@/entity/entity'
 import type { BuffSystem } from '@/combat/buff'
+import { Tooltip, buildBuffTooltip } from './tooltip'
 
 export class BuffBar {
   private container: HTMLDivElement
+  private tooltip: Tooltip
 
   constructor(parent: HTMLDivElement) {
+    this.tooltip = new Tooltip(parent)
     this.container = document.createElement('div')
     this.container.style.cssText = `
       position: absolute; bottom: 110px; left: 50%; transform: translateX(-50%);
@@ -29,11 +32,17 @@ export class BuffBar {
       const el = this.container.children[i] as HTMLDivElement
       const arrow = el.querySelector('.arrow') as HTMLSpanElement
       const timer = el.querySelector('.timer') as HTMLSpanElement
-
-      // Determine buff or debuff from the def
-      const isBuff = !inst.defId.includes('debuff') // heuristic; ideally check def.type
-      // Better: check via buffSystem
       const isDebuff = this.isDebuff(inst, buffSystem)
+
+      // Store data for tooltip
+      const def = buffSystem.getDef(inst.defId)
+      ;(el as any)._buffData = {
+        name: def?.name ?? inst.defId,
+        type: isDebuff ? 'debuff' : 'buff',
+        stacks: inst.stacks,
+        remaining: inst.remaining,
+        effects: def?.effects ?? [],
+      }
 
       arrow.textContent = isDebuff ? '▼' : '▲'
       arrow.style.color = isDebuff ? '#ff6666' : '#66ff66'
@@ -67,14 +76,8 @@ export class BuffBar {
   }
 
   private isDebuff(inst: BuffInstance, buffSystem: BuffSystem): boolean {
-    // Try to read from registered defs via naming convention
-    // A proper implementation would check BuffDef.type, but BuffSystem
-    // doesn't expose getDef(). Use defId heuristic for prototype.
-    return inst.defId.toLowerCase().includes('debuff')
-      || inst.defId.toLowerCase().includes('slow')
-      || inst.defId.toLowerCase().includes('poison')
-      || inst.defId.toLowerCase().includes('stun')
-      || inst.defId.toLowerCase().includes('silence')
+    const def = buffSystem.getDef(inst.defId)
+    return def?.type === 'debuff'
   }
 
   private createIcon(): HTMLDivElement {
@@ -98,6 +101,19 @@ export class BuffBar {
     timer.className = 'timer'
     timer.style.cssText = 'font-size: 9px; color: #aaa; line-height: 1;'
     el.appendChild(timer)
+
+    // Tooltip hover
+    el.style.pointerEvents = 'auto'
+    el.style.cursor = 'default'
+    el.addEventListener('mouseenter', (ev) => {
+      const data = (el as any)._buffData
+      if (data) this.tooltip.show(buildBuffTooltip(data), ev.clientX, ev.clientY)
+    })
+    el.addEventListener('mousemove', (ev) => {
+      const data = (el as any)._buffData
+      if (data) this.tooltip.show(buildBuffTooltip(data), ev.clientX, ev.clientY)
+    })
+    el.addEventListener('mouseleave', () => this.tooltip.hide())
 
     return el
   }
