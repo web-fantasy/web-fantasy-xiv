@@ -259,23 +259,40 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     hp: 50000, maxHp: 50000, attack: 1000,
     speed: 6, size: 0.5, autoAttackRange: 5,
   })
-  player.inCombat = true
-
   const boss = entityMgr.create({
     id: 'boss', type: 'boss',
     position: { x: 0, y: 0, z: 0 },
     hp: 500000, maxHp: 500000, attack: 1,
-    speed: 4, size: 1.5, autoAttackRange: 5, facing: 180,
+    speed: 4, size: 1.5, autoAttackRange: 5, aggroRange: 8, facing: 180,
   })
-  boss.inCombat = true
 
   const bossAI = new BossBehavior(boss, {
     chaseRange: 5,
     autoAttackRange: 15,
     autoAttackInterval: 3000,
+    aggroRange: 8,
   })
   bossAI.lockFacing(180)
   let aiEnabled = false
+  let combatStarted = false
+
+  function engageCombat() {
+    if (combatStarted) return
+    combatStarted = true
+    player.inCombat = true
+    boss.inCombat = true
+    bus.emit('combat:started', { entities: [player, boss] })
+  }
+
+  // Aggro on player attacking boss + player death check
+  bus.on('damage:dealt', (payload: { source: Entity; target: Entity }) => {
+    if (payload.target.id === boss.id && !combatStarted) {
+      engageCombat()
+    }
+    if (payload.target.id === player.id && payload.target.hp <= 0) {
+      onBattleEnd('wipe')
+    }
+  })
 
   const scheduler = new TimelineScheduler(bus, TIMELINE)
 
@@ -329,11 +346,6 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     }
   })
 
-  bus.on('damage:dealt', (payload: { target: Entity }) => {
-    if (payload.target.id === player.id && payload.target.hp <= 0) {
-      onBattleEnd('wipe')
-    }
-  })
 
   function onBattleEnd(result: 'victory' | 'wipe') {
     if (battleOver) return
@@ -370,7 +382,15 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     const result = playerDriver.update(dt)
     if (result === 'pause') { paused = true; pauseMenu.show(); return }
 
-    scheduler.update(dt)
+    // Aggro check (proximity)
+    if (!combatStarted && bossAI.checkAggro(player)) {
+      engageCombat()
+    }
+
+    // Timeline only runs after combat starts
+    if (combatStarted) {
+      scheduler.update(dt)
+    }
 
     if (aiEnabled && boss.alive && !boss.casting) {
       bossAI.updateFacing(player)
