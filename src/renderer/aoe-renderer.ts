@@ -101,13 +101,22 @@ export class AoeRenderer {
 
     // Lay flat on ground
     mesh.rotation.x = Math.PI / 2
-    mesh.position.set(zone.center.x, 0.02, zone.center.y)
+
+    // Position: rect needs offset along facing so it starts at center and extends forward
+    if (shape.type === 'rect') {
+      const facingRad = (zone.facing * Math.PI) / 180
+      const offsetX = Math.sin(facingRad) * (shape.length / 2)
+      const offsetZ = Math.cos(facingRad) * (shape.length / 2)
+      mesh.position.set(zone.center.x + offsetX, 0.02, zone.center.y + offsetZ)
+    } else {
+      mesh.position.set(zone.center.x, 0.02, zone.center.y)
+    }
 
     // Apply facing rotation (around Y axis)
-    // After rotation.x = PI/2, CreateDisc arc starts at +X (east=90°), sweeps CCW.
-    // Arc center is at (90 - A/2)°. To align center with facing F:
+    // Fan: CreateDisc arc starts at +X (east=90°) after laying flat, sweeps CCW.
+    //   Arc center is at (90 - A/2)°. To align center with facing F:
     //   rotation.y = (F - 90 + A/2) * PI/180
-    // For non-fan shapes (rect/circle), simply rotate by facing.
+    // Rect/circle: simply rotate by facing.
     if (shape.type === 'fan') {
       mesh.rotation.y = ((zone.facing - 90 + shape.angle / 2) * Math.PI) / 180
     } else {
