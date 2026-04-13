@@ -10,21 +10,21 @@ import type { SkillDef } from '@/core/types'
 const weaponskill: SkillDef = {
   id: 'slash', name: 'Slash', type: 'weaponskill',
   castTime: 0, cooldown: 0, gcd: true,
-  targetType: 'single', range: 5,
+  targetType: 'single', requiresTarget: true, range: 5,
   effects: [{ type: 'damage', potency: 2 }],
 }
 
 const spell: SkillDef = {
   id: 'fire1', name: 'Fire I', type: 'spell',
   castTime: 2500, cooldown: 0, gcd: true,
-  targetType: 'single', range: 25,
+  targetType: 'single', requiresTarget: true, range: 25,
   effects: [{ type: 'damage', potency: 3 }],
 }
 
 const ability: SkillDef = {
   id: 'berserk', name: 'Berserk', type: 'ability',
   castTime: 0, cooldown: 60000, gcd: false,
-  targetType: 'single', range: 0,
+  targetType: 'single', requiresTarget: false, range: 0,
   effects: [{ type: 'apply_buff', buffId: 'berserk_buff' }],
 }
 

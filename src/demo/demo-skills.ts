@@ -9,12 +9,13 @@ export const AUTO_ATTACK: SkillDef = {
   cooldown: 0,
   gcd: false,
   targetType: 'single',
+  requiresTarget: true,
   range: 5,
   effects: [{ type: 'damage', potency: 1 }],
 }
 
 export const DEMO_SKILLS: SkillDef[] = [
-  // 1: 单体战技
+  // 1: 单体战技（需要目标）
   {
     id: 'slash',
     name: '斩击',
@@ -23,10 +24,11 @@ export const DEMO_SKILLS: SkillDef[] = [
     cooldown: 0,
     gcd: true,
     targetType: 'single',
+    requiresTarget: true,
     range: 5,
     effects: [{ type: 'damage', potency: 2 }],
   },
-  // 2: 单体魔法（有咏唱）
+  // 2: 单体魔法（需要目标，有咏唱）
   {
     id: 'fire1',
     name: '火炎',
@@ -35,10 +37,11 @@ export const DEMO_SKILLS: SkillDef[] = [
     cooldown: 0,
     gcd: true,
     targetType: 'single',
+    requiresTarget: true,
     range: 20,
     effects: [{ type: 'damage', potency: 4 }],
   },
-  // 3: 扇形战技（正面 90°，朝向目标）
+  // 3: 扇形战技（需要目标，朝向目标释放）
   {
     id: 'overpower',
     name: '超压斧',
@@ -47,6 +50,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     cooldown: 0,
     gcd: true,
     targetType: 'aoe',
+    requiresTarget: true,
     range: 8,
     zones: [{
       anchor: { type: 'caster' },
@@ -58,7 +62,7 @@ export const DEMO_SKILLS: SkillDef[] = [
       effects: [{ type: 'damage', potency: 1.5 }],
     }],
   },
-  // 4: 以自身为圆心的圆形能力技
+  // 4: 以自身为圆心的圆形能力技（不需要目标）
   {
     id: 'rage_burst',
     name: '战嚎',
@@ -67,6 +71,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     cooldown: 15000,
     gcd: false,
     targetType: 'aoe',
+    requiresTarget: false,
     range: 0,
     zones: [{
       anchor: { type: 'caster' },
@@ -78,7 +83,7 @@ export const DEMO_SKILLS: SkillDef[] = [
       effects: [{ type: 'damage', potency: 5 }],
     }],
   },
-  // 5: 锁定目标释放的矩形魔法（有咏唱）
+  // 5: 矩形魔法（需要目标，朝向目标释放，有咏唱）
   {
     id: 'piercing_ray',
     name: '穿透射线',
@@ -87,6 +92,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     cooldown: 0,
     gcd: true,
     targetType: 'aoe',
+    requiresTarget: true,
     range: 25,
     zones: [{
       anchor: { type: 'caster' },
@@ -98,7 +104,7 @@ export const DEMO_SKILLS: SkillDef[] = [
       effects: [{ type: 'damage', potency: 3 }],
     }],
   },
-  // 6: 长 CD 能力技（测试独立 CD 倒计时）
+  // 6: 长 CD 能力技（不需要目标，自身增强）
   {
     id: 'berserk',
     name: '狂暴',
@@ -107,6 +113,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     cooldown: 60000,
     gcd: false,
     targetType: 'single',
+    requiresTarget: false,
     range: 0,
     effects: [{ type: 'damage', potency: 10 }],
   },

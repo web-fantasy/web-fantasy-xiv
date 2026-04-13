@@ -48,11 +48,11 @@ export class SkillResolver {
     // Independent cooldown check
     if (skill.cooldown > 0 && this.getCooldown(caster.id, skill.id) > 0) return false
 
-    // Range check for skills that require a target (single or AoE with range > 0)
-    if (skill.range > 0) {
+    // Target check
+    if (skill.requiresTarget) {
       const target = caster.target ? this.entityMgr.get(caster.target) : null
       if (!target || !target.alive) return false
-      if (distance(caster.position, target.position) > skill.range) return false
+      if (skill.range > 0 && distance(caster.position, target.position) > skill.range) return false
     }
 
     // Execute
@@ -64,7 +64,7 @@ export class SkillResolver {
 
   private startCast(caster: Entity, skill: SkillDef): boolean {
     // Auto-face target when starting a cast
-    if (caster.target && skill.range > 0) {
+    if (caster.target && skill.requiresTarget) {
       const targetEntity = this.entityMgr.get(caster.target)
       if (targetEntity) {
         caster.facing = this.facingToward(caster, targetEntity)
@@ -97,7 +97,7 @@ export class SkillResolver {
 
     // Auto-face target when using a targeted skill
     const targetEntity = caster.target ? this.entityMgr.get(caster.target) : null
-    if (targetEntity && skill.range > 0) {
+    if (targetEntity && skill.requiresTarget) {
       caster.facing = this.facingToward(caster, targetEntity)
     }
 

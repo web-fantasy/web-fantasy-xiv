@@ -58,7 +58,8 @@ export interface SkillDef {
   cooldown: number // ms
   gcd: boolean
   targetType: TargetType
-  range: number
+  requiresTarget: boolean  // true = must have a locked enemy target to cast
+  range: number            // max cast distance (only checked when requiresTarget=true)
   zones?: AoeZoneDef[]
   effects?: SkillEffectDef[]
 }
