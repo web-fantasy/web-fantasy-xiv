@@ -14,8 +14,26 @@ let scene: GameScene | null = null
 
 export async function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): Promise<void> {
   scene?.dispose()
-  const encounter = await loadEncounter('/encounters/timeline-test.yaml')
-  initScene(canvas, uiRoot, encounter)
+
+  // Loading screen
+  const loading = document.createElement('div')
+  loading.style.cssText = `
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    background: rgba(0,0,0,0.9); z-index: 200;
+    color: #888; font-size: 16px; letter-spacing: 2px;
+  `
+  loading.textContent = 'Loading...'
+  uiRoot.appendChild(loading)
+
+  try {
+    const encounter = await loadEncounter(`${import.meta.env.BASE_URL}encounters/timeline-test.yaml`)
+    loading.remove()
+    initScene(canvas, uiRoot, encounter)
+  } catch (err) {
+    loading.textContent = `Failed to load encounter: ${err}`
+    loading.style.color = '#ff4444'
+  }
 }
 
 function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData): void {
