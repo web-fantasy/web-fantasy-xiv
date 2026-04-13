@@ -1,0 +1,266 @@
+# Timeline Test Encounter
+# 测试各种 AOE 机制：扇形连斩、左右刀、吸引、钢铁月环、十字斩、追击
+
+arena:
+  name: Timeline Test Arena
+  shape: circle
+  radius: 15
+  boundary: wall
+
+boss:
+  name: Test Boss
+  type: boss
+  hp: 500000
+  attack: 1
+  speed: 4
+  size: 1.5
+  autoAttackRange: 5
+  facing: 180
+
+player:
+  hp: 50000
+  attack: 1000
+  speed: 6
+  size: 0.5
+  autoAttackRange: 5
+
+boss_ai:
+  chaseRange: 5
+  autoAttackRange: 15
+  autoAttackInterval: 3000
+  aggroRange: 8
+
+# Skills (all inline, referenced by id in timeline)
+skills:
+  fan_s:
+    name: 扇形斬・前
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 180 }
+        shape: { type: fan, radius: 12, angle: 90 }
+        resolveDelay: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+
+  fan_w:
+    name: 扇形斬・右
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 270 }
+        shape: { type: fan, radius: 12, angle: 90 }
+        resolveDelay: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+
+  fan_n:
+    name: 扇形斬・後
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 0 }
+        shape: { type: fan, radius: 12, angle: 90 }
+        resolveDelay: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+
+  fan_e:
+    name: 扇形斬・左
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 90 }
+        shape: { type: fan, radius: 12, angle: 90 }
+        resolveDelay: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+
+  lr_cleave:
+    name: 左右開弓
+    type: spell
+    castTime: 5000
+    targetType: aoe
+    zones:
+      # Left 180°: telegraph from start, resolves at 5s
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 90 }
+        shape: { type: fan, radius: 14, angle: 180 }
+        resolveDelay: 5000
+        telegraphBefore: 5000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+      # Right 180°: telegraph 4s before resolve, resolves at 7s
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 270 }
+        shape: { type: fan, radius: 14, angle: 180 }
+        resolveDelay: 7000
+        telegraphBefore: 4000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+
+  pull_cast:
+    name: 引力漩渦
+    type: spell
+    castTime: 5000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 20 }
+        resolveDelay: 5000
+        hitEffectDuration: 500
+        effects:
+          - { type: damage, potency: 2000 }
+          - { type: pull, distance: 99, source: { type: caster } }
+        displacementHint: pull
+
+  iron_lunar:
+    name: 鋼鉄月環
+    type: spell
+    castTime: 5000
+    targetType: aoe
+    zones:
+      # Iron Chariot (circle): resolves at 5s
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 6 }
+        resolveDelay: 5000
+        telegraphBefore: 5000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+      # Lunar Dynamo (ring): telegraph at 3s, resolves at 8s
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: ring, innerRadius: 6, outerRadius: 14 }
+        resolveDelay: 8000
+        telegraphBefore: 5000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+
+  pull_instant:
+    name: 引力崩壊
+    type: ability
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 20 }
+        resolveDelay: 0
+        hitEffectDuration: 300
+        effects:
+          - { type: pull, distance: 6, source: { type: caster } }
+        displacementHint: pull
+
+  cross_cut:
+    name: 十字斬
+    type: spell
+    castTime: 5000
+    targetType: aoe
+    zones:
+      # Vertical (N→S)
+      - anchor: { type: position, x: 0, y: 15 }
+        direction: { type: fixed, angle: 180 }
+        shape: { type: rect, length: 30, width: 4 }
+        resolveDelay: 5000
+        telegraphBefore: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+      # Horizontal (W→E)
+      - anchor: { type: position, x: -15, y: 0 }
+        direction: { type: fixed, angle: 90 }
+        shape: { type: rect, length: 30, width: 4 }
+        resolveDelay: 5000
+        telegraphBefore: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 15000 }]
+
+  boss_front:
+    name: 前方斬撃
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: caster_facing }
+        shape: { type: fan, radius: 12, angle: 180 }
+        resolveDelay: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 12000 }]
+
+  boss_auto:
+    name: 攻撃
+    type: ability
+    targetType: single
+    requiresTarget: true
+    range: 15
+    effects: [{ type: damage, potency: 500 }]
+
+  enrage:
+    name: 時間切迫
+    type: spell
+    castTime: 10000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 99 }
+        resolveDelay: 10000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 999999 }]
+
+# Timeline (boss actions after combat starts)
+timeline:
+  # Phase 1: clockwise fans
+  - at: 2000
+    use: fan_s
+  - at: 5000
+    use: fan_w
+  - at: 8000
+    use: fan_n
+  - at: 11000
+    use: fan_e
+
+  # Phase 2: left-right cleave
+  - at: 16000
+    use: lr_cleave
+
+  # Phase 3: pull → iron chariot + lunar dynamo
+  - at: 25000
+    use: pull_cast
+  - at: 31000
+    use: iron_lunar
+
+  # Phase 4: instant pull + cross cut
+  - at: 40000
+    use: pull_instant
+  - at: 40000
+    use: cross_cut
+
+  # Phase 5: enable AI
+  - at: 47000
+    action: enable_ai
+
+  # Phase 6: boss front cleave from current position
+  - at: 52000
+    use: boss_front
+
+  # Phase 7: teleport to center, enrage
+  - at: 60000
+    action: disable_ai
+  - at: 60000
+    action: teleport
+    position: { x: 0, y: 0 }
+  - at: 60000
+    action: lock_facing
+    facing: 180
+  - at: 60500
+    use: enrage

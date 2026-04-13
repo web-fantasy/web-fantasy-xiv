@@ -17,288 +17,67 @@ import { CameraController } from '@/game/camera-controller'
 import { CombatResolver } from '@/game/combat-resolver'
 import { PlayerInputDriver } from '@/game/player-input-driver'
 import { DisplacementAnimator } from '@/game/displacement-animator'
+import { loadEncounter, type EncounterData } from '@/game/encounter-loader'
 import { UIManager } from '@/ui/ui-manager'
 import { TimelineDisplay } from '@/ui/timeline-display'
 import { PauseMenu } from '@/ui/pause-menu'
 import { DevTerminal } from '@/devtools/dev-terminal'
 import { CommandRegistry } from '@/devtools/commands'
-import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
-import { DEMO_SKILL_BAR } from './demo-skill-bar'
 import { DebugInfo } from '@/ui/debug-info'
 import { CombatAnnounce } from '@/ui/combat-announce'
-import type { ArenaDef, SkillDef, AoeZoneDef } from '@/core/types'
+import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
+import { DEMO_SKILL_BAR } from './demo-skill-bar'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
 
-const ARENA_DEF: ArenaDef = {
-  name: 'Timeline Test Arena',
-  shape: { type: 'circle', radius: 15 },
-  boundary: 'wall',
-}
-
-// ========== HELPER ==========
-function dmgZone(
-  direction: AoeZoneDef['direction'],
-  shape: AoeZoneDef['shape'],
-  resolveDelay: number,
-  telegraphBefore?: number,
-  extra?: Partial<AoeZoneDef>,
-): AoeZoneDef {
-  return {
-    anchor: { type: 'caster' },
-    direction,
-    shape,
-    resolveDelay,
-    telegraphBefore,
-    hitEffectDuration: 500,
-    effects: [{ type: 'damage', potency: 15000 }],
-    ...extra,
-  }
-}
-
-// ========== SKILLS ==========
-
-// Phase 1: 4 individual 3s fan spells, each with its own cast bar
-// Frame alignment tolerance in SkillResolver.tryUse handles the 1-tick desync
-function makeFan(id: string, name: string, angle: number): SkillDef {
-  return {
-    id, name, type: 'spell',
-    castTime: 3000, cooldown: 0, gcd: false,
-    targetType: 'aoe', requiresTarget: false, range: 0,
-    zones: [dmgZone({ type: 'fixed', angle }, { type: 'fan', radius: 12, angle: 90 }, 3000)],
-  }
-}
-const FAN_S = makeFan('fan_s', '扇形斬・前', 180)
-const FAN_W = makeFan('fan_w', '扇形斬・右', 270)
-const FAN_N = makeFan('fan_n', '扇形斬・後', 0)
-const FAN_E = makeFan('fan_e', '扇形斬・左', 90)
-
-// Phase 2: 左右開弓 — 5s cast (matches left resolve), right resolves 2s later
-const LR_CLEAVE: SkillDef = {
-  id: 'lr_cleave', name: '左右開弓', type: 'spell',
-  castTime: 5000, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [
-    // Left 180°: telegraph from cast start, resolves at 5s
-    dmgZone({ type: 'fixed', angle: 90 }, { type: 'fan', radius: 14, angle: 180 }, 5000, 5000),
-    // Right 180°: telegraph shows 4s before resolve (= 3s into cast), resolves at 7s
-    dmgZone({ type: 'fixed', angle: 270 }, { type: 'fan', radius: 14, angle: 180 }, 7000, 4000),
-  ],
-}
-
-// Phase 3: 引力漩渦 — 5s cast pull
-const PULL_CAST: SkillDef = {
-  id: 'pull_cast', name: '引力漩渦', type: 'spell',
-  castTime: 5000, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [{
-    anchor: { type: 'caster' }, direction: { type: 'none' },
-    shape: { type: 'circle', radius: 20 },
-    resolveDelay: 5000, hitEffectDuration: 500,
-    effects: [{ type: 'damage', potency: 2000 }, { type: 'pull', distance: 99, source: { type: 'caster' } }],
-    displacementHint: 'pull',
-  }],
-}
-
-// Phase 4: 鋼鉄月環 — 5s cast, circle resolves at 5s, ring resolves at 8s
-const IRON_LUNAR: SkillDef = {
-  id: 'iron_lunar', name: '鋼鉄月環', type: 'spell',
-  castTime: 5000, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [
-    // Iron Chariot (circle): telegraph from start, resolves at 5s
-    dmgZone({ type: 'none' }, { type: 'circle', radius: 6 }, 5000, 5000),
-    // Lunar Dynamo (ring): telegraph 5s before, resolves at 8s (shows at 3s)
-    dmgZone({ type: 'none' }, { type: 'ring', innerRadius: 6, outerRadius: 14 }, 8000, 5000),
-  ],
-}
-
-// Phase 5a: 引力崩壊 — instant pull (ability, no cast)
-const PULL_INSTANT: SkillDef = {
-  id: 'pull_instant', name: '引力崩壊', type: 'ability',
-  castTime: 0, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [{
-    anchor: { type: 'caster' }, direction: { type: 'none' },
-    shape: { type: 'circle', radius: 20 },
-    resolveDelay: 0, hitEffectDuration: 300,
-    effects: [{ type: 'pull', distance: 6, source: { type: 'caster' } }],
-    displacementHint: 'pull',
-  }],
-}
-
-// Phase 5b: 十字斬 — 5s cast, telegraph 3s before resolve, 2 crossing rects
-const CROSS_CUT: SkillDef = {
-  id: 'cross_cut', name: '十字斬', type: 'spell',
-  castTime: 5000, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [
-    // Vertical (N→S, starts at north edge)
-    {
-      anchor: { type: 'position', x: 0, y: 15 },
-      direction: { type: 'fixed', angle: 180 },
-      shape: { type: 'rect', length: 30, width: 4 },
-      resolveDelay: 5000, telegraphBefore: 3000,
-      hitEffectDuration: 500,
-      effects: [{ type: 'damage', potency: 15000 }],
-    },
-    // Horizontal (W→E, starts at west edge)
-    {
-      anchor: { type: 'position', x: -15, y: 0 },
-      direction: { type: 'fixed', angle: 90 },
-      shape: { type: 'rect', length: 30, width: 4 },
-      resolveDelay: 5000, telegraphBefore: 3000,
-      hitEffectDuration: 500,
-      effects: [{ type: 'damage', potency: 15000 }],
-    },
-  ],
-}
-
-// Phase 6: 前方斬撃 — boss casts from current facing (AI active)
-const BOSS_FRONT: SkillDef = {
-  id: 'boss_front', name: '前方斬撃', type: 'spell',
-  castTime: 3000, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [
-    dmgZone({ type: 'caster_facing' }, { type: 'fan', radius: 12, angle: 180 }, 3000),
-  ],
-}
-
-// Phase 7: 時間切迫 (enrage) — normal spell so it shows on timeline + cast bar
-const ENRAGE: SkillDef = {
-  id: 'enrage', name: '時間切迫', type: 'spell',
-  castTime: 10000, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [{
-    anchor: { type: 'caster' }, direction: { type: 'none' },
-    shape: { type: 'circle', radius: 99 },
-    resolveDelay: 10000, hitEffectDuration: 500,
-    effects: [{ type: 'damage', potency: 999999 }],
-  }],
-}
-
-// Boss auto-attack
-const BOSS_AUTO: SkillDef = {
-  id: 'boss_auto', name: '攻撃', type: 'ability',
-  castTime: 0, cooldown: 0, gcd: false,
-  targetType: 'single', requiresTarget: true, range: 5,
-  effects: [{ type: 'damage', potency: 500 }],
-}
-
-// ========== TIMELINE ==========
-const TIMELINE: TimelineAction[] = [
-  // Phase 1 (2-14s): 4 independent fan casts, back-to-back
-  { at: 2000, action: 'use', use: 'fan_s' },
-  { at: 5000, action: 'use', use: 'fan_w' },
-  { at: 8000, action: 'use', use: 'fan_n' },
-  { at: 11000, action: 'use', use: 'fan_e' },
-
-  // Phase 2 (16s): 左右開弓 — 5s cast, left@21s right@23s
-  // 2s gap after last fan resolves at 14s
-  { at: 16000, action: 'use', use: 'lr_cleave' },
-
-  // Phase 3 (25s): 引力漩渦 — 5s pull
-  // 2s gap after right cleave resolves at 23s
-  { at: 25000, action: 'use', use: 'pull_cast' },
-
-  // Phase 4 (31s): 鋼鉄月環 — circle@36s ring@39s
-  // 1s gap after pull resolves at 30s
-  { at: 31000, action: 'use', use: 'iron_lunar' },
-
-  // Phase 5 (40s): instant pull → cross cut (5s cast, telegraph at 42s)
-  // 1s gap after ring resolves at 39s
-  { at: 40000, action: 'use', use: 'pull_instant' },
-  { at: 40000, action: 'use', use: 'cross_cut' },
-
-  // Phase 6 (47s): enable AI, boss hunts player
-  // 2s gap after cross cut resolves at 45s
-  { at: 47000, action: 'enable_ai' },
-
-  // Phase 6b (52s): front 180° cleave from current position
-  { at: 52000, action: 'use', use: 'boss_front' },
-
-  // Phase 7 (60s): teleport to center, enrage
-  { at: 60000, action: 'disable_ai' },
-  { at: 60000, action: 'teleport', position: { x: 0, y: 0 } },
-  { at: 60000, action: 'lock_facing', facing: 180 },
-  { at: 60500, action: 'use', use: 'enrage' },
-]
-
-// ========== SCENE ==========
 let cleanup: (() => void) | null = null
 
-export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): void {
+export async function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): Promise<void> {
   if (cleanup) { cleanup(); cleanup = null }
 
+  // Load encounter from YAML
+  const encounter = await loadEncounter('/encounters/timeline-test.yaml')
+  initScene(canvas, uiRoot, encounter)
+}
+
+function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData): void {
   const bus = new EventBus()
   const entityMgr = new EntityManager(bus)
   const buffSystem = new BuffSystem(bus)
   const zoneMgr = new AoeZoneManager(bus, entityMgr)
   const skillResolver = new SkillResolver(bus, entityMgr, buffSystem, zoneMgr)
-  const arena = new Arena(ARENA_DEF)
+  const arena = new Arena(enc.arena)
   const gameLoop = new GameLoop()
   const displacer = new DisplacementAnimator(arena)
 
   new CombatResolver(bus, entityMgr, buffSystem, arena, displacer)
 
-  const skillMap = new Map<string, SkillDef>()
-  for (const s of [
-    FAN_S, FAN_W, FAN_N, FAN_E, LR_CLEAVE, PULL_CAST, PULL_INSTANT,
-    IRON_LUNAR, CROSS_CUT, BOSS_FRONT, ENRAGE, BOSS_AUTO,
-  ]) {
-    skillMap.set(s.id, s)
-  }
-
+  // Rendering
   const sceneManager = new SceneManager(canvas)
-  new ArenaRenderer(sceneManager.scene, ARENA_DEF)
+  new ArenaRenderer(sceneManager.scene, enc.arena)
   const entityRenderer = new EntityRenderer(sceneManager.scene, bus)
   const aoeRenderer = new AoeRenderer(sceneManager.scene, bus)
   const hitEffectRenderer = new HitEffectRenderer(sceneManager.scene, bus, entityRenderer)
 
+  // Entities
   const player = entityMgr.create({
-    id: 'player', type: 'player',
+    id: 'player',
+    type: 'player',
     position: { x: 0, y: -12, z: 0 },
-    hp: 50000, maxHp: 50000, attack: 1000,
-    speed: 6, size: 0.5, autoAttackRange: 5,
-  })
-  const boss = entityMgr.create({
-    id: 'boss', type: 'boss',
-    position: { x: 0, y: 0, z: 0 },
-    hp: 500000, maxHp: 500000, attack: 1,
-    speed: 4, size: 1.5, autoAttackRange: 5, aggroRange: 8, facing: 180,
+    ...enc.player,
   })
 
-  const bossAI = new BossBehavior(boss, {
-    chaseRange: 5,
-    autoAttackRange: 15,
-    autoAttackInterval: 3000,
-    aggroRange: 8,
-  })
-  bossAI.lockFacing(180)
+  const boss = entityMgr.create(enc.boss)
+
+  const bossAI = new BossBehavior(boss, enc.bossAI)
+  bossAI.lockFacing(boss.facing)
   let aiEnabled = false
   let combatStarted = false
 
-  function engageCombat() {
-    if (combatStarted) return
-    combatStarted = true
-    player.inCombat = true
-    boss.inCombat = true
-    announce.show('战斗开始')
-    bus.emit('combat:started', { entities: [player, boss] })
-  }
+  const bossAutoSkill = enc.skills.get('boss_auto')
+  const scheduler = new TimelineScheduler(bus, enc.timeline)
 
-  // Aggro on player attacking boss + player death check
-  bus.on('damage:dealt', (payload: { source: Entity; target: Entity }) => {
-    if (payload.target.id === boss.id && !combatStarted) {
-      engageCombat()
-    }
-    if (payload.target.id === player.id && payload.target.hp <= 0) {
-      onBattleEnd('wipe')
-    }
-  })
-
-  const scheduler = new TimelineScheduler(bus, TIMELINE)
-
+  // Camera + Input + Player
   const camera = new CameraController()
   camera.follow(player)
 
@@ -313,9 +92,10 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     },
   )
 
+  // UI
   const uiManager = new UIManager(uiRoot, bus, DEMO_SKILL_BAR)
   uiManager.bindScene(sceneManager)
-  const timelineDisplay = new TimelineDisplay(uiRoot, TIMELINE, skillMap)
+  const timelineDisplay = new TimelineDisplay(uiRoot, enc.timeline, enc.skills)
   const pauseMenu = new PauseMenu(uiRoot)
   const devTerminal = new DevTerminal(bus, new CommandRegistry())
   devTerminal.mount(uiRoot)
@@ -328,11 +108,27 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
   pauseMenu.onResumeGame(() => { paused = false; pauseMenu.hide() })
   pauseMenu.onQuitGame(() => window.location.reload())
 
+  // --- Engage ---
+  function engageCombat() {
+    if (combatStarted) return
+    combatStarted = true
+    player.inCombat = true
+    boss.inCombat = true
+    announce.show('战斗开始')
+    bus.emit('combat:started', { entities: [player, boss] })
+  }
+
+  bus.on('damage:dealt', (payload: { source: Entity; target: Entity }) => {
+    if (payload.target.id === boss.id && !combatStarted) engageCombat()
+    if (payload.target.id === player.id && payload.target.hp <= 0) onBattleEnd('wipe')
+  })
+
+  // --- Timeline actions ---
   bus.on('timeline:action', (action: TimelineAction) => {
     if (battleOver) return
 
     if (action.action === 'use' && action.use) {
-      const skill = skillMap.get(action.use)
+      const skill = enc.skills.get(action.use)
       if (skill) skillResolver.tryUse(boss, skill)
     }
     if (action.action === 'lock_facing' && action.facing != null) {
@@ -351,7 +147,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     }
   })
 
-
+  // --- Battle end ---
   function onBattleEnd(result: 'victory' | 'wipe') {
     if (battleOver) return
     battleOver = true
@@ -378,6 +174,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     uiRoot.appendChild(overlay)
   }
 
+  // --- Game loop ---
   let lastTime = performance.now()
 
   gameLoop.onUpdate((dt) => {
@@ -387,12 +184,8 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     const result = playerDriver.update(dt)
     if (result === 'pause') { paused = true; pauseMenu.show(); return }
 
-    // Aggro check (proximity)
-    if (!combatStarted && bossAI.checkAggro(player)) {
-      engageCombat()
-    }
+    if (!combatStarted && bossAI.checkAggro(player)) engageCombat()
 
-    // Timeline only runs after combat starts
     if (combatStarted) {
       scheduler.update(dt)
     }
@@ -400,9 +193,9 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     if (aiEnabled && boss.alive && !boss.casting) {
       bossAI.updateFacing(player)
       bossAI.updateMovement(player, dt)
-      if (bossAI.tickAutoAttack(dt) && bossAI.isInAutoAttackRange(player)) {
+      if (bossAutoSkill && bossAI.tickAutoAttack(dt) && bossAI.isInAutoAttackRange(player)) {
         boss.target = player.id
-        skillResolver.tryUse(boss, BOSS_AUTO)
+        skillResolver.tryUse(boss, bossAutoSkill)
       }
     }
 
