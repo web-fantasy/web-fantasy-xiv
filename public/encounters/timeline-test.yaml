@@ -219,48 +219,62 @@ skills:
 
 # Timeline (boss actions after combat starts)
 timeline:
-  # Phase 1: clockwise fans
-  - at: 2000
-    use: fan_s
-  - at: 5000
-    use: fan_w
-  - at: 8000
-    use: fan_n
-  - at: 11000
-    use: fan_e
-
-  # Phase 2: left-right cleave
-  - at: 16000
-    use: lr_cleave
-
-  # Phase 3: pull → iron chariot + lunar dynamo
-  - at: 25000
-    use: pull_cast
-  - at: 31000
-    use: iron_lunar
-
-  # Phase 4: instant pull + cross cut
-  - at: 40000
-    use: pull_instant
-  - at: 40000
-    use: cross_cut
-
-  # Phase 5: enable AI
-  - at: 47000
+  # Phase 0 (0-10s): boss chases and auto-attacks
+  - at: 0
     action: enable_ai
 
-  # Phase 6: boss front cleave from current position
-  - at: 52000
-    use: boss_front
-
-  # Phase 7: teleport to center, enrage
-  - at: 60000
+  # Phase 0→1 transition: teleport back to center, disable AI
+  - at: 10000
     action: disable_ai
-  - at: 60000
+  - at: 10000
     action: teleport
     position: { x: 0, y: 0 }
-  - at: 60000
+  - at: 10000
     action: lock_facing
     facing: 180
-  - at: 60500
+
+  # Phase 1 (14-26s): clockwise fans
+  - at: 14000
+    use: fan_s
+  - at: 17000
+    use: fan_w
+  - at: 20000
+    use: fan_n
+  - at: 23000
+    use: fan_e
+
+  # Phase 2 (28-35s): left-right cleave
+  - at: 28000
+    use: lr_cleave
+
+  # Phase 3 (37-51s): pull → iron chariot + lunar dynamo
+  - at: 37000
+    use: pull_cast
+  - at: 43000
+    use: iron_lunar
+
+  # Phase 4 (52-57s): instant pull + cross cut
+  - at: 52000
+    use: pull_instant
+  - at: 52000
+    use: cross_cut
+
+  # Phase 5 (59s): enable AI, boss hunts player
+  - at: 59000
+    action: enable_ai
+
+  # Phase 6 (64s): boss front cleave from current position
+  - at: 64000
+    use: boss_front
+
+  # Phase 7 (72s): teleport to center, enrage
+  - at: 72000
+    action: disable_ai
+  - at: 72000
+    action: teleport
+    position: { x: 0, y: 0 }
+  - at: 72000
+    action: lock_facing
+    facing: 180
+  - at: 72500
     use: enrage
