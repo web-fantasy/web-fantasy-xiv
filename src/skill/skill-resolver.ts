@@ -36,6 +36,9 @@ export class SkillResolver {
     this.registerSkill(skill)
     this.trackedEntities.set(caster.id, caster)
 
+    // Dead: block everything
+    if (!caster.alive) return false
+
     // Stunned: block everything
     if (this.buffSystem.isStunned(caster)) return false
 

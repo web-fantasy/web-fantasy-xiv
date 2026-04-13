@@ -59,6 +59,8 @@ describe('parseEncounterYaml', () => {
     expect(data.boss.hp).toBe(100000)
     expect(data.boss.facing).toBe(180)
     expect(data.boss.type).toBe('boss')
+    // Also available in entities map
+    expect(data.entities.get('boss')).toBe(data.boss)
   })
 
   it('should parse player overrides', () => {
@@ -80,12 +82,65 @@ describe('parseEncounterYaml', () => {
     const data = parseEncounterYaml(MINIMAL_YAML)
     expect(data.timeline).toHaveLength(3)
     expect(data.timeline[0]).toEqual({ at: 1000, action: 'use', use: 'slash' })
-    expect(data.timeline[2]).toEqual({ at: 10000, action: 'enable_ai' })
+    expect(data.timeline[2]).toEqual({ at: 10000, action: 'enable_ai', entity: undefined })
+  })
+
+  it('should auto-create phase_default from flat timeline', () => {
+    const data = parseEncounterYaml(MINIMAL_YAML)
+    expect(data.phases).toHaveLength(1)
+    expect(data.phases[0].id).toBe('phase_default')
+    expect(data.phases[0].trigger).toEqual({ type: 'on_combat_start' })
+    expect(data.phases[0].actions).toEqual(data.timeline)
   })
 
   it('should parse boss_ai config', () => {
     const data = parseEncounterYaml(MINIMAL_YAML)
     expect(data.bossAI.chaseRange).toBe(5)
     expect(data.bossAI.autoAttackRange).toBe(15)
+  })
+
+  it('should parse unified entities format', () => {
+    const yaml = `
+arena:
+  name: Test
+  shape: circle
+  radius: 10
+  boundary: wall
+
+entities:
+  boss:
+    type: boss
+    hp: 80000
+    attack: 1
+    speed: 4
+    size: 1.5
+    facing: 180
+  mob_a:
+    type: mob
+    group: adds_wave1
+    hp: 5000
+    attack: 1
+    visible: false
+    targetable: false
+    position: { x: 5, y: 0 }
+
+player:
+  hp: 50000
+  attack: 1000
+
+skills: {}
+timeline: []
+`
+    const data = parseEncounterYaml(yaml)
+    expect(data.entities.size).toBe(2)
+    expect(data.boss.type).toBe('boss')
+    expect(data.boss.hp).toBe(80000)
+
+    const mob = data.entities.get('mob_a')!
+    expect(mob.type).toBe('mob')
+    expect(mob.group).toBe('adds_wave1')
+    expect(mob.visible).toBe(false)
+    expect(mob.targetable).toBe(false)
+    expect(mob.position).toEqual({ x: 5, y: 0 })
   })
 })

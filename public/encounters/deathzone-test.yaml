@@ -1,0 +1,111 @@
+# 死区教学
+# 长条矩形场地 10×40，致命边界
+# 玩家出生在最南端，boss 开战后传送到最北
+# 中间分布各种形状死区，玩家需穿越到达 boss 打一下即可通关
+# 30s 狂暴：boss 释放超远击退，玩家被推出场外即死
+
+arena:
+  name: 死域教学
+  shape: rect
+  width: 10
+  height: 40
+  boundary: lethal
+  deathZones:
+    # 地图 x: -5~5, y: -20~20, 玩家从 y=-18 到 y=18
+    # 安全路线：中间偏左 → 右侧 → 中间 → 左侧 → 右侧 → 到达boss
+
+    # ── 第1关：圆形挡路，从左侧绕过 ──
+    - id: circle_south
+      center: { x: 0, y: -14 }
+      shape: { type: circle, radius: 2 }
+
+    # ── 第2关：右半区矩形墙，从左侧通过 ──
+    #    rect 从 center 向 facing(0=北) 延伸 length，±width/2 水平
+    #    覆盖 x:[0,5] y:[-10,-4]
+    - id: rect_right_wall
+      center: { x: 2.5, y: -10 }
+      facing: 0
+      shape: { type: rect, length: 6, width: 5 }
+
+    # ── 第3关：左半区矩形墙，从右侧通过（迫使变道）──
+    #    覆盖 x:[-5,0] y:[-4,2]
+    - id: rect_left_wall
+      center: { x: -2.5, y: -4 }
+      facing: 0
+      shape: { type: rect, length: 6, width: 5 }
+
+    # ── 第4关：中央大圆，从左右边缘挤过 ──
+    - id: circle_mid
+      center: { x: 0, y: 5 }
+      shape: { type: circle, radius: 3 }
+
+    # ── 第5关：左侧扇形封路，从右侧通过 ──
+    #    扇形从 (-5,10) 朝东(facing=90)，半径6，角度120
+    #    覆盖左半+中间大部分
+    - id: fan_block
+      center: { x: -5, y: 10 }
+      facing: 90
+      shape: { type: fan, radius: 6, angle: 120 }
+
+    # ── 第6关：右侧矩形小墙，左侧留口到达boss ──
+    #    覆盖 x:[0,5] y:[15,17]
+    - id: rect_north_wall
+      center: { x: 2.5, y: 15 }
+      facing: 0
+      shape: { type: rect, length: 2, width: 5 }
+
+entities:
+  boss:
+    type: boss
+    group: boss
+    hp: 1
+    attack: 99999
+    speed: 0
+    size: 1
+    facing: 180
+    position: { x: 0, y: -10, z: 0 }
+    autoAttackRange: 0
+    aggroRange: 10
+
+player:
+  hp: 50000
+  mp: 10000
+  attack: 99999
+  speed: 5
+  size: 0.5
+  autoAttackRange: 3
+  position: { x: 0, y: -18, z: 0 }
+
+boss_ai:
+  aggroRange: 10
+  aggroAngle: 360
+
+local_skills:
+  enrage_knockback:
+    name: 狂暴击退
+    type: spell
+    castTime: 5000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 50 }
+        resolveDelay: 5000
+        hitEffectDuration: 500
+        effects:
+          - { type: knockback, distance: 50, source: { type: caster } }
+        displacementHint: knockback
+
+skills: {}
+
+timeline:
+  - at: 0
+    action: teleport
+    position: { x: 0, y: 18 }
+  - at: 500
+    action: lock_facing
+    facing: 180
+  - at: 15000
+    use: enrage_knockback

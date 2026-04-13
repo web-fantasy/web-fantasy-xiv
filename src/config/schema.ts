@@ -1,4 +1,4 @@
-import type { ArenaDef, SkillDef, AoeZoneDef, SkillEffectDef } from '@/core/types'
+import type { ArenaDef, SkillDef, AoeZoneDef, SkillEffectDef, DeathZoneDef } from '@/core/types'
 
 // --- Arena ---
 export interface RawArenaConfig {
@@ -8,13 +8,20 @@ export interface RawArenaConfig {
   width?: number
   height?: number
   boundary: string
+  deathZones?: { id?: string; center: { x: number; y: number }; facing?: number; shape?: any; radius?: number }[]
 }
 
 export function parseArenaConfig(raw: RawArenaConfig): ArenaDef {
   const shape = raw.shape === 'circle'
     ? { type: 'circle' as const, radius: raw.radius! }
     : { type: 'rect' as const, width: raw.width!, height: raw.height! }
-  return { name: raw.name, shape, boundary: raw.boundary as ArenaDef['boundary'] }
+  const deathZones: DeathZoneDef[] | undefined = raw.deathZones?.map((z, i) => ({
+    id: z.id ?? `static_${i}`,
+    center: { x: z.center.x, y: z.center.y },
+    facing: z.facing ?? 0,
+    shape: z.shape ?? { type: 'circle' as const, radius: z.radius ?? 1 },
+  }))
+  return { name: raw.name, shape, boundary: raw.boundary as ArenaDef['boundary'], deathZones }
 }
 
 // --- Entity ---
@@ -77,15 +84,39 @@ function parseZone(raw: any): AoeZoneDef {
 
 // --- Timeline ---
 export interface TimelineAction {
-  at: number          // absolute ms
-  action: string      // 'use' | 'loop' | 'switch_arena' | 'spawn_entity' | 'lock_facing' | 'enable_ai' | 'disable_ai' | 'teleport'
+  at: number          // ms relative to phase start
+  action: string      // 'use' | 'loop' | 'switch_arena' | 'spawn_entity' | 'lock_facing' | 'enable_ai' | 'disable_ai' | 'teleport' | 'set_visible' | 'set_targetable'
   use?: string        // skill id
+  entity?: string     // entity id to act on (default: boss)
   loop?: number       // target time ms
   arena?: string      // arena alias
-  entity?: string     // entity alias
   position?: { x: number; y: number }
   facing?: number
   locked?: boolean
+  value?: boolean     // for set_visible / set_targetable
+  // death zone fields
+  deathZone?: { id: string; center: { x: number; y: number }; facing?: number; shape: any }
+  deathZoneId?: string   // for remove_death_zone
+  // spawn_entity fields
+  spawnId?: string
+  spawnType?: string
+  spawnGroup?: string
+  spawnHp?: number
+  spawnAttack?: number
+  spawnSpeed?: number
+  spawnSize?: number
+}
+
+// --- Phase system ---
+export type PhaseTrigger =
+  | { type: 'on_combat_start' }
+  | { type: 'on_all_killed'; group: string }
+  | { type: 'on_hp_below'; group: string; percent: number }
+
+export interface PhaseDef {
+  id: string
+  trigger: PhaseTrigger
+  actions: TimelineAction[]
 }
 
 export interface TimelineConfig {

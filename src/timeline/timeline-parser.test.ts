@@ -1,6 +1,6 @@
 // src/timeline/timeline-parser.test.ts
 import { describe, it, expect } from 'vitest'
-import { flattenTimeline } from '@/timeline/timeline-parser'
+import { flattenTimeline, parsePhases } from '@/timeline/timeline-parser'
 
 describe('flattenTimeline', () => {
   it('should pass through flat entries', () => {
@@ -72,6 +72,64 @@ describe('flattenTimeline', () => {
     ]
     const result = flattenTimeline(raw)
     expect(result[0]).toEqual({ at: 60000, action: 'switch_arena', arena: 'broken' })
-    expect(result[1]).toEqual({ at: 62000, action: 'spawn_entity', entity: 'add1', position: { x: 10, y: 0 } })
+    expect(result[1]).toEqual({
+      at: 62000, action: 'spawn_entity',
+      spawnId: 'add1', spawnType: 'mob', spawnGroup: 'mob',
+      spawnHp: undefined, spawnAttack: undefined, spawnSpeed: undefined, spawnSize: undefined,
+      position: { x: 10, y: 0 },
+    })
+  })
+})
+
+describe('parsePhases', () => {
+  it('should wrap flat timeline as phase_default when no phases defined', () => {
+    const timeline = [
+      { at: 0, use: 'slash' },
+      { at: 5000, use: 'raidwide' },
+    ]
+    const phases = parsePhases(undefined, timeline)
+    expect(phases).toHaveLength(1)
+    expect(phases[0].id).toBe('phase_default')
+    expect(phases[0].trigger).toEqual({ type: 'on_combat_start' })
+    expect(phases[0].actions).toHaveLength(2)
+  })
+
+  it('should parse object-format phases', () => {
+    const rawPhases = {
+      phase_default: {
+        actions: [{ at: 0, use: 'slash' }],
+      },
+      phase_adds: {
+        trigger: { on_all_killed: { group: 'adds_group1' } },
+        actions: [{ at: 0, use: 'big_attack' }],
+      },
+      phase_enrage: {
+        trigger: { on_hp_below: { group: 'boss', percent: 10 } },
+        actions: [{ at: 0, use: 'enrage' }],
+      },
+    }
+    const phases = parsePhases(rawPhases)
+    expect(phases).toHaveLength(3)
+
+    expect(phases[0].id).toBe('phase_default')
+    expect(phases[0].trigger).toEqual({ type: 'on_combat_start' })
+
+    expect(phases[1].id).toBe('phase_adds')
+    expect(phases[1].trigger).toEqual({ type: 'on_all_killed', group: 'adds_group1' })
+
+    expect(phases[2].id).toBe('phase_enrage')
+    expect(phases[2].trigger).toEqual({ type: 'on_hp_below', group: 'boss', percent: 10 })
+  })
+
+  it('should default to on_combat_start if trigger is missing', () => {
+    const rawPhases = {
+      phase_default: { actions: [] },
+      some_phase: { actions: [] },
+    }
+    const phases = parsePhases(rawPhases)
+    // phase_default always gets on_combat_start
+    expect(phases[0].trigger.type).toBe('on_combat_start')
+    // non-default without trigger also defaults to on_combat_start
+    expect(phases[1].trigger.type).toBe('on_combat_start')
   })
 })

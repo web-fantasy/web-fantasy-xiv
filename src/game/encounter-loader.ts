@@ -1,19 +1,26 @@
 // src/game/encounter-loader.ts
 import { parse as parseYaml } from 'yaml'
 import { parseArenaConfig, parseSkillConfig } from '@/config/schema'
-import { flattenTimeline } from '@/timeline/timeline-parser'
+import { flattenTimeline, parsePhases } from '@/timeline/timeline-parser'
 import type { ArenaDef, SkillDef } from '@/core/types'
-import type { TimelineAction } from '@/config/schema'
+import type { PhaseDef, TimelineAction } from '@/config/schema'
 import type { BossBehaviorConfig } from '@/ai/boss-behavior'
 import type { CreateEntityOptions } from '@/entity/entity'
 
 export interface EncounterData {
   arena: ArenaDef
+  /** All entity definitions (boss, player, mobs, objects) keyed by id */
+  entities: Map<string, CreateEntityOptions>
+  /** Shortcut to the boss entity options (= entities.get('boss')) */
   boss: CreateEntityOptions
+  /** Shortcut to the player overrides */
   player: Partial<CreateEntityOptions>
   bossAI: Partial<BossBehaviorConfig>
   skills: Map<string, SkillDef>
+  /** Flat timeline (backward compat — equals phase_default actions) */
   timeline: TimelineAction[]
+  /** Phase definitions (always has at least phase_default) */
+  phases: PhaseDef[]
 }
 
 /**
@@ -37,21 +44,38 @@ export function parseEncounterYaml(yamlText: string): EncounterData {
   // Arena
   const arena = parseArenaConfig(raw.arena)
 
-  // Boss entity
-  const boss: CreateEntityOptions = {
-    id: 'boss',
-    type: 'boss',
-    hp: raw.boss.hp,
-    maxHp: raw.boss.hp,
-    attack: raw.boss.attack ?? 1,
-    speed: raw.boss.speed ?? 0,
-    size: raw.boss.size ?? 1.5,
-    autoAttackRange: raw.boss.autoAttackRange ?? 5,
-    aggroRange: raw.boss.aggroRange ?? raw.boss_ai?.aggroRange ?? 0,
-    facing: raw.boss.facing ?? 180,
+  // --- Entities ---
+  const entities = new Map<string, CreateEntityOptions>()
+
+  if (raw.entities) {
+    // New unified format: entities: { boss: {...}, mob1: {...}, ... }
+    for (const [id, def] of Object.entries(raw.entities as Record<string, any>)) {
+      entities.set(id, parseEntityOpts(id, def))
+    }
   }
 
-  // Player overrides
+  // Legacy format: boss: / player: top-level keys → merge into entities map
+  if (raw.boss && !entities.has('boss')) {
+    entities.set('boss', {
+      id: 'boss',
+      type: 'boss',
+      group: raw.boss.group ?? 'boss',
+      hp: raw.boss.hp,
+      maxHp: raw.boss.hp,
+      attack: raw.boss.attack ?? 1,
+      speed: raw.boss.speed ?? 0,
+      size: raw.boss.size ?? 1.5,
+      autoAttackRange: raw.boss.autoAttackRange ?? 5,
+      aggroRange: raw.boss.aggroRange ?? raw.boss_ai?.aggroRange ?? 0,
+      facing: raw.boss.facing ?? 180,
+    })
+  }
+
+  const boss = entities.get('boss') ?? {
+    id: 'boss', type: 'boss' as const, hp: 1, maxHp: 1, attack: 1,
+  }
+
+  // Player overrides (always from top-level player: for now)
   const player: Partial<CreateEntityOptions> = {
     hp: raw.player?.hp ?? 30000,
     maxHp: raw.player?.hp ?? 30000,
@@ -61,6 +85,7 @@ export function parseEncounterYaml(yamlText: string): EncounterData {
     speed: raw.player?.speed ?? 6,
     size: raw.player?.size ?? 0.5,
     autoAttackRange: raw.player?.autoAttackRange ?? 5,
+    position: raw.player?.position,
   }
 
   // Boss AI config
@@ -74,9 +99,37 @@ export function parseEncounterYaml(yamlText: string): EncounterData {
       skills.set(id, parsed)
     }
   }
+  // Local skills (defined inline in encounter YAML)
+  if (raw.local_skills) {
+    for (const [id, def] of Object.entries(raw.local_skills)) {
+      const parsed = parseSkillConfig({ id, ...(def as any) })
+      skills.set(id, parsed)
+    }
+  }
 
-  // Timeline
-  const timeline = flattenTimeline(raw.timeline ?? [])
+  // Timeline & Phases
+  const phases = parsePhases(raw.phases, raw.timeline)
+  const timeline = phases.find((p) => p.id === 'phase_default')?.actions ?? []
 
-  return { arena, boss, player, bossAI, skills, timeline }
+  return { arena, entities, boss, player, bossAI, skills, timeline, phases }
+}
+
+/** Parse a single entity definition from YAML into CreateEntityOptions */
+function parseEntityOpts(id: string, raw: any): CreateEntityOptions {
+  return {
+    id,
+    type: raw.type ?? 'mob',
+    group: raw.group ?? raw.type ?? 'mob',
+    visible: raw.visible ?? true,
+    targetable: raw.targetable ?? true,
+    position: raw.position,
+    facing: raw.facing,
+    hp: raw.hp,
+    maxHp: raw.hp,
+    attack: raw.attack ?? 1,
+    speed: raw.speed ?? 0,
+    size: raw.size ?? 0.5,
+    autoAttackRange: raw.autoAttackRange ?? 5,
+    aggroRange: raw.aggroRange ?? 0,
+  }
 }

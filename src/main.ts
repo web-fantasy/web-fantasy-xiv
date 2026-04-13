@@ -19,7 +19,17 @@ new MainMenu(uiRoot, [
   },
   {
     label: 'Timeline Test',
-    description: 'Clockwise fan rotation, 30s enrage',
+    description: 'AOE mechanics showcase, 80s enrage',
     callback: () => startTimelineDemo(canvas, uiRoot),
+  },
+  {
+    label: 'Mob Phase Test',
+    description: 'Boss → Adds → Boss return',
+    callback: () => startTimelineDemo(canvas, uiRoot, `${import.meta.env.BASE_URL}encounters/mob-phase-test.yaml`),
+  },
+  {
+    label: 'Death Zone Test',
+    description: 'Lethal boundary + inner death zone',
+    callback: () => startTimelineDemo(canvas, uiRoot, `${import.meta.env.BASE_URL}encounters/deathzone-test.yaml`),
   },
 ])

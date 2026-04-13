@@ -135,6 +135,10 @@ export class EntityRenderer {
       const group = this.meshes.get(entity.id)
       if (!group) continue
 
+      // Hide entire mesh group when entity is not visible
+      group.root.setEnabled(entity.visible)
+      if (!entity.visible) continue
+
       group.root.position.set(entity.position.x, 0, entity.position.y)
       group.root.rotation.y = (entity.facing * Math.PI) / 180
 

@@ -101,10 +101,19 @@ export type ArenaShape =
 
 export type BoundaryType = 'lethal' | 'wall'
 
+export interface DeathZoneDef {
+  id: string
+  center: Vec2
+  facing: number
+  shape: AoeShapeDef
+}
+
 export interface ArenaDef {
   name: string
   shape: ArenaShape
   boundary: BoundaryType
+  /** Initial death zones loaded from encounter YAML */
+  deathZones?: DeathZoneDef[]
 }
 
 export type FacingQuadrant = 'forward' | 'back' | 'left' | 'right'

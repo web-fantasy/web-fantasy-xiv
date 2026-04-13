@@ -100,7 +100,7 @@ export class GameScene {
 
     // Rendering
     this.sceneManager = new SceneManager(config.canvas)
-    new ArenaRenderer(this.sceneManager.scene, config.arena)
+    new ArenaRenderer(this.sceneManager.scene, config.arena, this.bus)
     this.entityRenderer = new EntityRenderer(this.sceneManager.scene, this.bus)
     this.aoeRenderer = new AoeRenderer(this.sceneManager.scene, this.bus, this.entityMgr)
     this.hitEffectRenderer = new HitEffectRenderer(this.sceneManager.scene, this.bus, this.entityRenderer)

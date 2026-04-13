@@ -18,7 +18,10 @@ export interface BuffInstance {
 export interface Entity {
   readonly id: string
   readonly type: EntityType
+  readonly group: string    // grouping tag for phase triggers (e.g. 'boss', 'adds_group1')
 
+  visible: boolean          // false = off-stage, not rendered (场外小怪)
+  targetable: boolean       // false = cannot be selected/damaged (转场无敌)
   position: Vec3
   facing: number
   speed: number
@@ -47,6 +50,9 @@ export interface Entity {
 export interface CreateEntityOptions {
   id: string
   type: EntityType
+  group?: string
+  visible?: boolean
+  targetable?: boolean
   position?: Vec3
   facing?: number
   speed?: number
@@ -67,6 +73,9 @@ export function createEntity(opts: CreateEntityOptions): Entity {
   return {
     id: opts.id,
     type: opts.type,
+    group: opts.group ?? opts.type,
+    visible: opts.visible ?? true,
+    targetable: opts.targetable ?? true,
     position: opts.position ?? { x: 0, y: 0, z: 0 },
     facing: opts.facing ?? 0,
     speed: opts.speed ?? 5,

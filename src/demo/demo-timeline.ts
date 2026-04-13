@@ -1,8 +1,9 @@
 import { GameScene } from '@/game/game-scene'
 import { BossBehavior } from '@/ai/boss-behavior'
-import { TimelineScheduler } from '@/timeline/timeline-scheduler'
+import { PhaseScheduler } from '@/timeline/phase-scheduler'
 import { TimelineDisplay } from '@/ui/timeline-display'
 import { loadEncounter } from '@/game/encounter-loader'
+import { DeathZoneManager } from '@/arena/death-zone-manager'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
 import { DEMO_SKILL_BAR } from './demo-skill-bar'
@@ -12,10 +13,13 @@ import type { EncounterData } from '@/game/encounter-loader'
 
 let scene: GameScene | null = null
 
-export async function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): Promise<void> {
+export async function startTimelineDemo(
+  canvas: HTMLCanvasElement,
+  uiRoot: HTMLDivElement,
+  encounterUrl?: string,
+): Promise<void> {
   scene?.dispose()
 
-  // Loading screen
   const loading = document.createElement('div')
   loading.style.cssText = `
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -26,17 +30,19 @@ export async function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLD
   loading.textContent = 'Loading...'
   uiRoot.appendChild(loading)
 
+  const url = encounterUrl ?? `${import.meta.env.BASE_URL}encounters/timeline-test.yaml`
+
   try {
-    const encounter = await loadEncounter(`${import.meta.env.BASE_URL}encounters/timeline-test.yaml`)
+    const encounter = await loadEncounter(url)
     loading.remove()
-    initScene(canvas, uiRoot, encounter)
+    initScene(canvas, uiRoot, encounter, url)
   } catch (err) {
     loading.textContent = `Failed to load encounter: ${err}`
     loading.style.color = '#ff4444'
   }
 }
 
-function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData): void {
+function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData, encounterUrl: string): void {
   scene = new GameScene({
     canvas, uiRoot, arena: enc.arena,
     skillBarEntries: DEMO_SKILL_BAR,
@@ -47,7 +53,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       autoAttackInterval: 3000,
     },
     buffDefs: DEMO_BUFF_MAP,
-    restart: () => startTimelineDemo(canvas, uiRoot),
+    restart: () => startTimelineDemo(canvas, uiRoot, encounterUrl),
   })
 
   const s = scene
@@ -58,18 +64,40 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     ...enc.player,
   })
 
-  const boss = s.entityMgr.create(enc.boss)
-  s.bossEntity = boss
+  // Create all entities from encounter data
+  const entityMap = new Map<string, Entity>()
+  const aiMap = new Map<string, BossBehavior>()
+  const aiEnabled = new Set<string>()
+
+  for (const [id, opts] of enc.entities) {
+    const entity = s.entityMgr.create(opts)
+    entityMap.set(id, entity)
+
+    // Boss entity shortcut
+    if (id === 'boss') s.bossEntity = entity
+
+    // Create AI for boss/mob type entities
+    if (opts.type === 'boss' || opts.type === 'mob') {
+      const ai = new BossBehavior(entity, id === 'boss' ? enc.bossAI : {})
+      ai.lockFacing(entity.facing)
+      aiMap.set(id, ai)
+    }
+  }
+
+  const boss = entityMap.get('boss')!
   s.combatResolver.registerBuffs(DEMO_BUFFS)
 
-  const bossAI = new BossBehavior(boss, enc.bossAI)
-  bossAI.lockFacing(boss.facing)
-  let aiEnabled = false
   let combatStarted = false
-
   const bossAutoSkill = enc.skills.get('boss_auto')
-  const scheduler = new TimelineScheduler(s.bus, enc.timeline)
-  const timelineDisplay = new TimelineDisplay(uiRoot, enc.timeline, enc.skills)
+  const scheduler = new PhaseScheduler(s.bus, enc.phases)
+  const timelineDisplay = new TimelineDisplay(uiRoot, scheduler, enc.skills)
+  const deathZoneMgr = new DeathZoneManager(s.bus)
+  if (enc.arena.deathZones) deathZoneMgr.loadInitial(enc.arena.deathZones)
+
+  // Helper: resolve entity from action (default: boss)
+  function resolveEntity(action: TimelineAction): Entity | undefined {
+    return action.entity ? entityMap.get(action.entity) : boss
+  }
 
   // Engage
   function engageCombat() {
@@ -83,39 +111,151 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
 
   s.bus.on('damage:dealt', (payload: { source: Entity; target: Entity }) => {
     if (payload.target.id === boss.id && !combatStarted) engageCombat()
+    // Check victory: boss dead
     if (payload.target.id === boss.id && payload.target.hp <= 0) s.onBattleEnd('victory')
+    // Check player dead
     if (payload.target.id === s.player.id && payload.target.hp <= 0) s.onBattleEnd('wipe')
+    // Mob death: destroy entity when hp reaches 0
+    if (payload.target.type === 'mob' && payload.target.hp <= 0 && payload.target.alive) {
+      s.entityMgr.destroy(payload.target.id)
+    }
+  })
+
+  // Mob death → apply 润泽 buff to player + clear stale target + remove AOE zones
+  s.bus.on('entity:died', (payload: { entity: Entity }) => {
+    const dead = payload.entity
+    if (dead.group === 'adds_wave1') {
+      const junzeDef = DEMO_BUFFS.junze
+      if (junzeDef) s.buffSystem.applyBuff(s.player, junzeDef, dead.id, 1)
+    }
+    // Clear player target if it was the dead entity
+    if (s.player.target === dead.id) {
+      s.player.target = null
+      s.bus.emit('target:released', { entity: s.player })
+    }
+    // Remove all AOE zones belonging to the dead entity
+    s.zoneMgr.cancelAllByCaster(dead.id)
   })
 
   // Timeline actions
   s.bus.on('timeline:action', (action: TimelineAction) => {
     if (s.battleOver) return
-    if (action.action === 'use' && action.use) {
-      const skill = enc.skills.get(action.use)
-      if (skill) s.skillResolver.tryUse(boss, skill)
+    const target = resolveEntity(action)
+
+    switch (action.action) {
+      case 'use':
+        if (action.use && target) {
+          // Ensure mobs target player so toward_target AOE works
+          if (target.type === 'mob' || target.type === 'boss') target.target = s.player.id
+          const skill = enc.skills.get(action.use)
+          if (skill) s.skillResolver.tryUse(target, skill)
+        }
+        break
+      case 'lock_facing':
+        if (action.facing != null && target) {
+          const ai = aiMap.get(target.id)
+          ai?.lockFacing(action.facing)
+        }
+        break
+      case 'enable_ai':
+        if (target) {
+          aiEnabled.add(target.id)
+          const ai = aiMap.get(target.id)
+          ai?.unlockFacing()
+          target.target = s.player.id
+        }
+        break
+      case 'disable_ai':
+        if (target) aiEnabled.delete(target.id)
+        break
+      case 'teleport':
+        if (target && action.position) {
+          s.displacer.start(target, action.position.x, action.position.y, 400)
+        }
+        break
+      case 'set_visible':
+        if (target) target.visible = action.value ?? true
+        break
+      case 'set_targetable':
+        if (target) {
+          target.targetable = action.value ?? true
+          // Clear player target if entity becomes untargetable
+          if (!target.targetable && s.player.target === target.id) {
+            s.player.target = null
+            s.bus.emit('target:released', { entity: s.player })
+          }
+        }
+        break
+      case 'add_death_zone':
+        if (action.deathZone) {
+          deathZoneMgr.add({
+            id: action.deathZone.id,
+            center: { x: action.deathZone.center.x, y: action.deathZone.center.y },
+            facing: action.deathZone.facing ?? 0,
+            shape: action.deathZone.shape,
+          })
+        }
+        break
+      case 'remove_death_zone':
+        if (action.deathZoneId) deathZoneMgr.remove(action.deathZoneId)
+        break
     }
-    if (action.action === 'lock_facing' && action.facing != null) bossAI.lockFacing(action.facing)
-    if (action.action === 'enable_ai') { aiEnabled = true; bossAI.unlockFacing(); boss.target = s.player.id }
-    if (action.action === 'disable_ai') aiEnabled = false
-    if (action.action === 'teleport' && action.position) s.displacer.start(boss, action.position.x, action.position.y, 400)
   })
 
-  s.getCombatElapsed = () => combatStarted ? scheduler.elapsed : null
+  s.getCombatElapsed = () => combatStarted ? scheduler.combatElapsed : null
+
+  let deathZoneTimer = 0
+  const DEATH_ZONE_INTERVAL = 500 // tick every 0.5s
+  const DEATH_ZONE_DAMAGE = 999999
 
   s.onLogicTick = (dt) => {
-    if (!combatStarted && bossAI.checkAggro(s.player)) engageCombat()
-    if (combatStarted) scheduler.update(dt)
+    if (!combatStarted) {
+      const bossAI = aiMap.get('boss')
+      if (bossAI?.checkAggro(s.player)) engageCombat()
+    }
+    if (combatStarted) {
+      scheduler.checkTriggers({
+        allKilledInGroup: (group) => {
+          const alive = s.entityMgr.getAlive()
+          return !alive.some((e) => e.group === group)
+        },
+      })
+      scheduler.update(dt)
+    }
 
-    if (aiEnabled && boss.alive && !boss.casting) {
-      bossAI.updateFacing(s.player)
-      bossAI.updateMovement(s.player, dt)
-      if (bossAutoSkill && bossAI.tickAutoAttack(dt) && bossAI.isInAutoAttackRange(s.player)) {
-        boss.target = s.player.id
-        s.skillResolver.tryUse(boss, bossAutoSkill)
+    // Death zone tick
+    if (s.player.alive) {
+      deathZoneTimer += dt
+      if (deathZoneTimer >= DEATH_ZONE_INTERVAL) {
+        deathZoneTimer -= DEATH_ZONE_INTERVAL
+        const pos = { x: s.player.position.x, y: s.player.position.y }
+        const inLethalBoundary = s.arena.def.boundary === 'lethal' && !s.arena.isInBounds(pos)
+        if (inLethalBoundary || deathZoneMgr.isInAnyZone(pos)) {
+          s.player.hp -= DEATH_ZONE_DAMAGE
+          s.bus.emit('damage:dealt', {
+            source: s.player, target: s.player,
+            amount: DEATH_ZONE_DAMAGE, skill: null,
+          })
+        }
       }
     }
 
-    timelineDisplay.update(scheduler.elapsed, dt)
+    // Update AI for all enabled entities
+    for (const entityId of aiEnabled) {
+      const entity = entityMap.get(entityId)
+      const ai = aiMap.get(entityId)
+      if (!entity?.alive || !ai || entity.casting) continue
+
+      ai.updateFacing(s.player)
+      ai.updateMovement(s.player, dt)
+
+      if (bossAutoSkill && ai.tickAutoAttack(dt) && ai.isInAutoAttackRange(s.player)) {
+        entity.target = s.player.id
+        s.skillResolver.tryUse(entity, bossAutoSkill)
+      }
+    }
+
+    timelineDisplay.update(dt)
   }
 
   s.start()

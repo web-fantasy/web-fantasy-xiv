@@ -1,6 +1,7 @@
 // src/ui/timeline-display.ts
 import type { SkillDef } from '@/core/types'
 import type { TimelineAction } from '@/config/schema'
+import type { PhaseScheduler } from '@/timeline/phase-scheduler'
 
 const STORAGE_KEY = 'xiv-timeline-collapsed'
 const WINDOW_MS = 30000 // show skills within 30s
@@ -8,6 +9,8 @@ const MAX_ENTRIES = 5
 const FLASH_DURATION = 1000
 
 interface DisplayEntry {
+  /** unique key: phaseId_at_use */
+  key: string
   action: TimelineAction
   skill: SkillDef
   el: HTMLDivElement
@@ -26,7 +29,7 @@ export class TimelineDisplay {
 
   constructor(
     parent: HTMLDivElement,
-    private actions: TimelineAction[],
+    private scheduler: PhaseScheduler,
     private skillMap: Map<string, SkillDef>,
   ) {
     this.collapsed = localStorage.getItem(STORAGE_KEY) === 'true'
@@ -77,27 +80,31 @@ export class TimelineDisplay {
     if (arrow) arrow.textContent = this.collapsed ? '▸' : '▾'
   }
 
-  /** Call each logic frame with current timeline elapsed ms */
-  update(elapsed: number, dt: number): void {
+  /** Call each logic frame */
+  update(dt: number): void {
     if (this.collapsed) return
 
-    // Collect upcoming skill actions within window
-    const upcoming: { action: TimelineAction; skill: SkillDef; timeUntil: number }[] = []
+    const elapsed = this.scheduler.combatElapsed
+    const allActions = this.scheduler.getAllActions()
 
-    for (const action of this.actions) {
+    // Collect upcoming skill actions within window
+    const upcoming: { key: string; action: TimelineAction; skill: SkillDef; absoluteAt: number; timeUntil: number }[] = []
+
+    for (const { action, phaseId, absoluteAt } of allActions) {
       if (action.action !== 'use' || !action.use) continue
       const skill = this.skillMap.get(action.use)
       if (!skill) continue
 
-      const timeUntil = action.at - elapsed
+      const timeUntil = absoluteAt - elapsed
       if (timeUntil > WINDOW_MS) continue
-      if (timeUntil < -FLASH_DURATION - (skill.castTime || 0)) continue // already finished
+      if (timeUntil < -FLASH_DURATION - (skill.castTime || 0)) continue
 
-      upcoming.push({ action, skill, timeUntil })
+      const key = `${phaseId}_${action.at}_${action.use}_${action.entity ?? ''}`
+      upcoming.push({ key, action, skill, absoluteAt, timeUntil })
     }
 
-    // Sort by time, take first MAX_ENTRIES
-    upcoming.sort((a, b) => a.action.at - b.action.at)
+    // Sort by absolute time, take first MAX_ENTRIES
+    upcoming.sort((a, b) => a.absoluteAt - b.absoluteAt)
     const visible = upcoming.slice(0, MAX_ENTRIES)
 
     // Reconcile DOM entries
@@ -105,21 +112,21 @@ export class TimelineDisplay {
 
     // Update each entry
     for (const entry of this.entries) {
-      const timeUntil = entry.action.at - elapsed
+      const match = visible.find((v) => v.key === entry.key)
+      const timeUntil = match ? match.timeUntil : -99999
       this.updateEntry(entry, timeUntil, dt)
     }
   }
 
   private reconcileEntries(
-    visible: { action: TimelineAction; skill: SkillDef; timeUntil: number }[],
+    visible: { key: string; action: TimelineAction; skill: SkillDef; timeUntil: number }[],
   ): void {
-    const existingIds = new Set(this.entries.map((e) => `${e.action.at}_${e.action.use}`))
-    const visibleIds = new Set(visible.map((v) => `${v.action.at}_${v.action.use}`))
+    const existingKeys = new Set(this.entries.map((e) => e.key))
+    const visibleKeys = new Set(visible.map((v) => v.key))
 
     // Remove entries no longer visible
     for (let i = this.entries.length - 1; i >= 0; i--) {
-      const id = `${this.entries[i].action.at}_${this.entries[i].action.use}`
-      if (!visibleIds.has(id)) {
+      if (!visibleKeys.has(this.entries[i].key)) {
         this.entries[i].el.remove()
         this.entries.splice(i, 1)
       }
@@ -127,21 +134,21 @@ export class TimelineDisplay {
 
     // Add new entries
     for (const v of visible) {
-      const id = `${v.action.at}_${v.action.use}`
-      if (!existingIds.has(id)) {
-        const entry = this.createElement(v.action, v.skill)
+      if (!existingKeys.has(v.key)) {
+        const entry = this.createElement(v.key, v.action, v.skill)
         this.entries.push(entry)
-        // Insert sorted
-        this.entries.sort((a, b) => a.action.at - b.action.at)
-        // Re-order DOM
-        for (const e of this.entries) {
-          this.list.appendChild(e.el)
-        }
       }
+    }
+
+    // Sort and re-order DOM
+    const keyOrder = visible.map((v) => v.key)
+    this.entries.sort((a, b) => keyOrder.indexOf(a.key) - keyOrder.indexOf(b.key))
+    for (const e of this.entries) {
+      this.list.appendChild(e.el)
     }
   }
 
-  private createElement(action: TimelineAction, skill: SkillDef): DisplayEntry {
+  private createElement(key: string, action: TimelineAction, skill: SkillDef): DisplayEntry {
     const el = document.createElement('div')
     el.style.cssText = `
       padding: 3px 8px; position: relative;
@@ -174,7 +181,7 @@ export class TimelineDisplay {
 
     el.appendChild(row)
 
-    return { action, skill, el, bar, countdown, state: 'upcoming', flashElapsed: 0 }
+    return { key, action, skill, el, bar, countdown, state: 'upcoming', flashElapsed: 0 }
   }
 
   private updateEntry(entry: DisplayEntry, timeUntil: number, dt: number): void {

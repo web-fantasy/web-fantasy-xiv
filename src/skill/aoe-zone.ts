@@ -93,9 +93,14 @@ export class AoeZoneManager {
   private resolve(zone: ActiveAoeZone): void {
     zone.resolved = true
     const hitEntities: Entity[] = []
+    const caster = zone.casterId ? this.entityMgr.get(zone.casterId) : null
 
     for (const entity of this.entityMgr.getAlive()) {
       if (zone.casterId !== null && entity.id === zone.casterId) continue
+      // Skip untargetable entities (invulnerable)
+      if (!entity.targetable) continue
+      // Skip friendly entities (same faction: player vs player, or boss/mob vs boss/mob)
+      if (caster && !this.isHostile(caster, entity)) continue
       const point: Vec2 = { x: entity.position.x, y: entity.position.y }
       if (isPointInAoeShape(point, zone.center, zone.def.shape, zone.facing)) {
         hitEntities.push(entity)
@@ -103,6 +108,14 @@ export class AoeZoneManager {
     }
 
     this.bus.emit('aoe:zone_resolved', { zone, hitEntities })
+  }
+
+  private isHostile(a: Entity, b: Entity): boolean {
+    const playerTypes = new Set(['player'])
+    const enemyTypes = new Set(['boss', 'mob'])
+    const aIsPlayer = playerTypes.has(a.type)
+    const bIsPlayer = playerTypes.has(b.type)
+    return aIsPlayer !== bIsPlayer
   }
 
   private resolveAnchor(anchor: AoeZoneDef['anchor'], casterPos: Vec2, targetPos: Vec2 | null): Vec2 {
@@ -144,6 +157,17 @@ export class AoeZoneManager {
     for (let i = this.zones.length - 1; i >= 0; i--) {
       const zone = this.zones[i]
       if (zone.casterId === casterId && zone.skillId === skillId && !zone.resolved) {
+        this.zones.splice(i, 1)
+        this.bus.emit('aoe:zone_removed', { zone })
+      }
+    }
+  }
+
+  /** Remove all zones (resolved or not) belonging to a caster (for entity death) */
+  cancelAllByCaster(casterId: string): void {
+    for (let i = this.zones.length - 1; i >= 0; i--) {
+      const zone = this.zones[i]
+      if (zone.casterId === casterId) {
         this.zones.splice(i, 1)
         this.bus.emit('aoe:zone_removed', { zone })
       }

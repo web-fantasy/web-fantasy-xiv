@@ -28,6 +28,15 @@ export const DEMO_BUFFS: Record<string, BuffDef> = {
     maxStacks: 1,
     effects: [{ type: 'mitigation', value: 0.4 }],
   },
+  junze: {
+    id: 'junze',
+    name: '润泽',
+    type: 'buff',
+    duration: 30000,
+    stackable: true,
+    maxStacks: 4,
+    effects: [{ type: 'damage_increase', value: 0.1 }],
+  },
 }
 
 // Map version for tooltip lookups

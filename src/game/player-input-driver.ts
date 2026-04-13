@@ -93,7 +93,7 @@ export class PlayerInputDriver {
     if (this.input.mouse.rightDown) {
       const nearest = this.entityMgr.findNearest(
         p.id,
-        (e) => e.type !== 'player' && e.type !== 'object' && e.alive,
+        (e) => e.type !== 'player' && e.type !== 'object' && e.alive && e.targetable,
       )
       if (nearest && p.target !== nearest.id) {
         p.target = nearest.id
@@ -202,7 +202,7 @@ export class PlayerInputDriver {
   private autoLockNearest(): void {
     const nearest = this.entityMgr.findNearest(
       this.entity.id,
-      (e) => e.type !== 'player' && e.type !== 'object' && e.alive,
+      (e) => e.type !== 'player' && e.type !== 'object' && e.alive && e.targetable,
     )
     if (nearest) {
       this.entity.target = nearest.id
