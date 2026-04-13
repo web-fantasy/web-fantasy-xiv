@@ -1,4 +1,4 @@
-import { Engine, Scene, ArcRotateCamera, HemisphericLight, Vector3, Plane } from '@babylonjs/core'
+import { Engine, Scene, ArcRotateCamera, HemisphericLight, DirectionalLight, Vector3, Plane } from '@babylonjs/core'
 
 export class SceneManager {
   readonly engine: Engine
@@ -24,9 +24,14 @@ export class SceneManager {
     this.camera.attachControl(canvas, false)
     this.camera.inputs.clear()
 
-    // Lighting
-    const light = new HemisphericLight('light', new Vector3(0, 1, -0.3), this.scene)
-    light.intensity = 0.9
+    // Ambient fill light (soft, from above)
+    const ambient = new HemisphericLight('ambient', new Vector3(0, 1, 0), this.scene)
+    ambient.intensity = 0.5
+
+    // Directional light from northwest → shadows fall to southeast (bottom-right on screen)
+    // Direction vector points FROM light TO scene: (-1, -2, -1) = light comes from +X, +Y, +Z (NW above)
+    const sun = new DirectionalLight('sun', new Vector3(-1, -2, -1).normalize(), this.scene)
+    sun.intensity = 0.6
   }
 
   /** Follow a world position (e.g. player) */
