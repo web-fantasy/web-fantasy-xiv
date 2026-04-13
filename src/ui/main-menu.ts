@@ -18,7 +18,7 @@ export class MainMenu {
     `
 
     const title = document.createElement('h1')
-    title.textContent = 'XIV Stage Play'
+    title.textContent = 'Web Fantasy XIV'
     title.style.cssText = `
       font-size: 36px; color: #e0e0e0; margin-bottom: 8px;
       font-weight: 300; letter-spacing: 4px;
