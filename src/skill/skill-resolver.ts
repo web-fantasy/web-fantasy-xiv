@@ -18,6 +18,8 @@ export class SkillResolver {
   /** entity id → skill id → remaining cooldown ms */
   private cooldowns = new Map<string, Map<string, number>>()
   private skillDefs = new Map<string, SkillDef>()
+  /** All entities that have ever used a skill (need GCD/casting ticks) */
+  private trackedEntities = new Map<string, Entity>()
 
   constructor(
     private bus: EventBus,
@@ -32,6 +34,7 @@ export class SkillResolver {
 
   tryUse(caster: Entity, skill: SkillDef): boolean {
     this.registerSkill(skill)
+    this.trackedEntities.set(caster.id, caster)
 
     // Stunned: block everything
     if (this.buffSystem.isStunned(caster)) return false
@@ -141,6 +144,14 @@ export class SkillResolver {
     entity.casting = null
     entity.gcdTimer = 0
     this.bus.emit('skill:cast_interrupted', { caster: entity, skillId, reason: 'interrupted' })
+  }
+
+  /** Tick GCD, casting, and cooldowns for ALL tracked entities */
+  updateAll(dt: number): void {
+    for (const entity of this.trackedEntities.values()) {
+      this.update(entity, dt)
+      this.updateCooldowns(entity, dt)
+    }
   }
 
   update(entity: Entity, dt: number): void {

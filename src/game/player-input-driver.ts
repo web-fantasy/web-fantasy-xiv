@@ -114,9 +114,8 @@ export class PlayerInputDriver {
       }
     }
 
-    // Tick GCD / casting / cooldowns / buffs
-    this.skillResolver.update(p, dt)
-    this.skillResolver.updateCooldowns(p, dt)
+    // Tick ALL entities' GCD / casting / cooldowns (not just player)
+    this.skillResolver.updateAll(dt)
     this.buffSystem.update(p, dt)
 
     return null
