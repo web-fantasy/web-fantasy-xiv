@@ -6,7 +6,8 @@
   "main": "index.js",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "vite build",
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
     "test": "vitest",
     "test:run": "vitest run"
   },
