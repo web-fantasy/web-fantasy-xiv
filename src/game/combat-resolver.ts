@@ -117,11 +117,17 @@ export class CombatResolver {
 
   private applyDisplacement(entity: Entity, newPos: { x: number; y: number }): void {
     const clamped = this.arena.clampPosition(newPos)
+
+    // Forced movement interrupts casting
+    if (entity.casting) {
+      entity.casting = null
+      entity.gcdTimer = 0
+      this.bus.emit('skill:cast_interrupted', { caster: entity, skillId: null, reason: 'displacement' })
+    }
+
     if (this.displacer) {
-      // Animate over time
       this.displacer.start(entity, clamped.x, clamped.y)
     } else {
-      // Instant fallback
       entity.position.x = clamped.x
       entity.position.y = clamped.y
     }
