@@ -25,6 +25,7 @@ import { CommandRegistry } from '@/devtools/commands'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import { DEMO_SKILL_BAR } from './demo-skill-bar'
 import { DebugInfo } from '@/ui/debug-info'
+import { CombatAnnounce } from '@/ui/combat-announce'
 import type { ArenaDef, SkillDef, AoeZoneDef } from '@/core/types'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
@@ -282,6 +283,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
     combatStarted = true
     player.inCombat = true
     boss.inCombat = true
+    announce.show('战斗开始')
     bus.emit('combat:started', { entities: [player, boss] })
   }
 
@@ -318,6 +320,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
   const devTerminal = new DevTerminal(bus, new CommandRegistry())
   devTerminal.mount(uiRoot)
   const debugInfo = new DebugInfo(uiRoot)
+  const announce = new CombatAnnounce(uiRoot)
 
   let paused = false
   let battleOver = false

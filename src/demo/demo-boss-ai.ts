@@ -23,6 +23,7 @@ import { CommandRegistry } from '@/devtools/commands'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import { DEMO_SKILL_BAR } from './demo-skill-bar'
 import { DebugInfo } from '@/ui/debug-info'
+import { CombatAnnounce } from '@/ui/combat-announce'
 import type { ArenaDef, SkillDef } from '@/core/types'
 import type { Entity } from '@/entity/entity'
 
@@ -98,6 +99,7 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
   const devTerminal = new DevTerminal(bus, new CommandRegistry())
   devTerminal.mount(uiRoot)
   const debugInfo = new DebugInfo(uiRoot)
+  const announce = new CombatAnnounce(uiRoot)
 
   let paused = false
   let combatStartTime: number | null = null
@@ -110,6 +112,7 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
     boss.target = player.id
     player.inCombat = true
     combatStartTime = performance.now()
+    announce.show('战斗开始')
     bus.emit('combat:started', { entities: [player, boss] })
   }
 
