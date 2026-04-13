@@ -41,3 +41,16 @@ export { isPointInAoeShape } from './skill/aoe-shape'
 export { AoeZoneManager } from './skill/aoe-zone'
 export type { ActiveAoeZone } from './skill/aoe-zone'
 export { SkillResolver, GCD_DURATION } from './skill/skill-resolver'
+
+// Config
+export { parseArenaConfig, parseEntityConfig, parseSkillConfig, parseTimelineConfig } from './config/schema'
+export type { EntityConfig, TimelineAction, TimelineConfig } from './config/schema'
+export { ResourceLoader } from './config/resource-loader'
+export type { FetchFn } from './config/resource-loader'
+
+// Timeline
+export { flattenTimeline } from './timeline/timeline-parser'
+export { TimelineScheduler } from './timeline/timeline-scheduler'
+
+// AI
+export { BossBehavior } from './ai/boss-behavior'
