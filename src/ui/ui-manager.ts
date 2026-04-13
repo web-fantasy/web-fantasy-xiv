@@ -30,8 +30,8 @@ export class UIManager {
   ) {
     DamageFloater.injectStyles()
 
-    this.bossHp = new HpBar(root, '', '#cc3333', 'top')
-    this.playerHp = new HpBar(root, '', '#3388cc', 'bottom')
+    this.bossHp = new HpBar(root, '', '#cc3333', 'top')     // red
+    this.playerHp = new HpBar(root, '', '#44aa44', 'bottom') // green
     this.skillBar = new SkillBar(root, entries)
     this.playerCastBar = new CastBar(root, {
       position: 'bottom: 120px',
