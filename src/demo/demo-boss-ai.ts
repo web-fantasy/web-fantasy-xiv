@@ -70,7 +70,12 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
     speed: 3, size: 1.5, autoAttackRange: 5, aggroRange: 8, facing: 180,
   })
 
-  const bossAI = new BossBehavior(boss, 5, 3000, 8)
+  const bossAI = new BossBehavior(boss, {
+    chaseRange: 5,
+    autoAttackRange: 7,
+    autoAttackInterval: 3000,
+    aggroRange: 8,
+  })
 
   const camera = new CameraController()
   camera.follow(player)

@@ -269,7 +269,11 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
   })
   boss.inCombat = true
 
-  const bossAI = new BossBehavior(boss, 5, 3000)
+  const bossAI = new BossBehavior(boss, {
+    chaseRange: 5,
+    autoAttackRange: 7,
+    autoAttackInterval: 3000,
+  })
   bossAI.lockFacing(180)
   let aiEnabled = false
 

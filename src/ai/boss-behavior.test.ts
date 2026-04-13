@@ -14,32 +14,46 @@ describe('BossBehavior', () => {
       id: 'p1', type: 'player',
       position: { x: 5, y: 0, z: 0 },
     })
-    const behavior = new BossBehavior(boss, 5, 3000) // range=5, autoInterval=3000
+    const behavior = new BossBehavior(boss, {
+      chaseRange: 5, autoAttackRange: 7, autoAttackInterval: 3000,
+    })
     return { boss, player, behavior }
   }
 
   it('should face toward target', () => {
     const { boss, player, behavior } = setup()
     behavior.updateFacing(player)
-    // Player is at (5,0), boss at (0,0) → facing east = 90°
     expect(boss.facing).toBeCloseTo(90, 0)
   })
 
-  it('should move toward target if out of range', () => {
+  it('should move toward target if out of chase range', () => {
     const { boss, player, behavior } = setup()
     player.position = { x: 20, y: 0, z: 0 }
-    behavior.updateMovement(player, 1000) // 1 second at speed 3
-    // Boss should have moved toward player
+    behavior.updateMovement(player, 1000)
     expect(boss.position.x).toBeGreaterThan(0)
-    expect(boss.position.x).toBeCloseTo(3, 0) // speed * dt/1000
+    expect(boss.position.x).toBeCloseTo(3, 0)
   })
 
-  it('should not move if already in range', () => {
+  it('should not move if already within chase range', () => {
     const { boss, player, behavior } = setup()
-    player.position = { x: 3, y: 0, z: 0 } // within range 5
+    player.position = { x: 3, y: 0, z: 0 } // within chaseRange 5
     const prevX = boss.position.x
     behavior.updateMovement(player, 1000)
     expect(boss.position.x).toBe(prevX)
+  })
+
+  it('should auto-attack within autoAttackRange even beyond chaseRange', () => {
+    const { boss, player, behavior } = setup()
+    player.position = { x: 6, y: 0, z: 0 } // outside chaseRange (5) but inside autoAttackRange (7)
+    boss.facing = 90 // facing east toward player
+    expect(behavior.isInAutoAttackRange(player)).toBe(true)
+  })
+
+  it('should not auto-attack beyond autoAttackRange', () => {
+    const { boss, player, behavior } = setup()
+    player.position = { x: 8, y: 0, z: 0 } // outside autoAttackRange (7)
+    boss.facing = 90
+    expect(behavior.isInAutoAttackRange(player)).toBe(false)
   })
 
   it('should not move or change facing while casting', () => {

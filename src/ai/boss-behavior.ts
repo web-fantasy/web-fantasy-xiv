@@ -15,38 +15,52 @@ function angleBetween(from: Entity, to: Entity): number {
   return ((Math.atan2(dx, dy) / DEG2RAD) + 360) % 360
 }
 
+export interface BossBehaviorConfig {
+  /** Distance boss chases to (stops at chaseRange - 0.1). Default: 5 */
+  chaseRange: number
+  /** Distance within which auto-attack hits. Should be > chaseRange so
+   *  player can't dodge autos by micro-moving. Default: 7 */
+  autoAttackRange: number
+  /** Auto-attack interval in ms. Default: 3000 */
+  autoAttackInterval: number
+  /** Aggro detection range (frontal cone). Default: chaseRange */
+  aggroRange?: number
+  /** Aggro frontal cone angle in degrees. Default: 120 */
+  aggroAngle?: number
+}
+
+const DEFAULT_CONFIG: BossBehaviorConfig = {
+  chaseRange: 5,
+  autoAttackRange: 7,
+  autoAttackInterval: 3000,
+}
+
 export class BossBehavior {
   private facingLocked = false
   private autoAttackAccum = 0
-  /** Aggro range — player entering this 120° frontal cone triggers combat */
-  private aggroRange: number
-  private aggroAngle = 120
+  readonly config: BossBehaviorConfig
 
   constructor(
     private boss: Entity,
-    private autoAttackRange: number,
-    private autoAttackInterval: number,
-    aggroRange?: number,
+    config?: Partial<BossBehaviorConfig>,
   ) {
-    this.aggroRange = aggroRange ?? autoAttackRange
+    this.config = { ...DEFAULT_CONFIG, ...config }
+    if (this.config.aggroRange == null) {
+      this.config.aggroRange = this.config.chaseRange
+    }
   }
 
-  /**
-   * Check if a player should trigger aggro (enter combat).
-   * Conditions: player within aggroRange AND within frontal aggroAngle cone,
-   * OR player has dealt damage to this boss (handled externally).
-   */
   checkAggro(player: Entity): boolean {
     if (this.boss.inCombat) return false
 
     const dist = distanceBetween(this.boss, player)
-    if (dist > this.aggroRange) return false
+    if (dist > this.config.aggroRange!) return false
 
-    // Check frontal cone
+    const aggroAngle = this.config.aggroAngle ?? 120
     const angleToPlayer = angleBetween(this.boss, player)
     let diff = Math.abs(angleToPlayer - this.boss.facing)
     if (diff > 180) diff = 360 - diff
-    return diff <= this.aggroAngle / 2
+    return diff <= aggroAngle / 2
   }
 
   engage(): void {
@@ -71,8 +85,8 @@ export class BossBehavior {
     const dy = target.position.y - this.boss.position.y
     const dist = Math.sqrt(dx * dx + dy * dy)
 
-    // Already in range (stop slightly inside)
-    if (dist <= this.autoAttackRange - 0.1) return
+    // Stop when within chase range (slight margin inside)
+    if (dist <= this.config.chaseRange - 0.1) return
 
     const moveDistance = this.boss.speed * (dt / 1000)
     const ratio = Math.min(moveDistance / dist, 1)
@@ -94,21 +108,21 @@ export class BossBehavior {
     if (this.boss.casting) return false
 
     this.autoAttackAccum += dt
-    if (this.autoAttackAccum >= this.autoAttackInterval) {
-      this.autoAttackAccum -= this.autoAttackInterval
+    if (this.autoAttackAccum >= this.config.autoAttackInterval) {
+      this.autoAttackAccum -= this.config.autoAttackInterval
       return true
     }
     return false
   }
 
-  /** Check if target is within auto-attack range and in frontal 180° */
+  /** Auto-attack hits if target is within autoAttackRange and in frontal 180° */
   isInAutoAttackRange(target: Entity): boolean {
     const dist = distanceBetween(this.boss, target)
-    if (dist > this.autoAttackRange) return false
+    if (dist > this.config.autoAttackRange) return false
 
     const angleToTarget = angleBetween(this.boss, target)
     let diff = Math.abs(angleToTarget - this.boss.facing)
     if (diff > 180) diff = 360 - diff
-    return diff <= 90 // frontal 180°
+    return diff <= 90
   }
 }
