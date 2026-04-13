@@ -1,9 +1,15 @@
 // src/ui/main-menu.ts
+
+export interface MenuEntry {
+  label: string
+  description?: string
+  callback: () => void
+}
+
 export class MainMenu {
   private container: HTMLDivElement
-  private onStart: (() => void) | null = null
 
-  constructor(parent: HTMLDivElement) {
+  constructor(parent: HTMLDivElement, entries: MenuEntry[]) {
     this.container = document.createElement('div')
     this.container.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
@@ -27,31 +33,45 @@ export class MainMenu {
     `
     this.container.appendChild(subtitle)
 
-    const startBtn = document.createElement('button')
-    startBtn.textContent = '▶  Training Dummy'
-    startBtn.style.cssText = `
-      padding: 12px 32px; font-size: 16px;
+    const btnStyle = `
+      padding: 12px 32px; font-size: 15px; margin: 5px;
       background: rgba(255, 255, 255, 0.1); color: #ccc;
       border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 4px;
       cursor: pointer; transition: all 0.15s;
-      letter-spacing: 1px;
+      letter-spacing: 1px; min-width: 240px; text-align: left;
     `
-    startBtn.addEventListener('mouseenter', () => {
-      startBtn.style.background = 'rgba(255, 255, 255, 0.2)'
-      startBtn.style.color = '#fff'
-    })
-    startBtn.addEventListener('mouseleave', () => {
-      startBtn.style.background = 'rgba(255, 255, 255, 0.1)'
-      startBtn.style.color = '#ccc'
-    })
-    startBtn.addEventListener('click', () => this.onStart?.())
-    this.container.appendChild(startBtn)
+
+    for (const entry of entries) {
+      const btn = document.createElement('button')
+      btn.style.cssText = btnStyle
+
+      const labelEl = document.createElement('div')
+      labelEl.textContent = `▶  ${entry.label}`
+      btn.appendChild(labelEl)
+
+      if (entry.description) {
+        const descEl = document.createElement('div')
+        descEl.textContent = entry.description
+        descEl.style.cssText = 'font-size: 11px; color: #777; margin-top: 2px;'
+        btn.appendChild(descEl)
+      }
+
+      btn.addEventListener('mouseenter', () => {
+        btn.style.background = 'rgba(255, 255, 255, 0.2)'
+        btn.style.color = '#fff'
+      })
+      btn.addEventListener('mouseleave', () => {
+        btn.style.background = 'rgba(255, 255, 255, 0.1)'
+        btn.style.color = '#ccc'
+      })
+      btn.addEventListener('click', () => {
+        this.hide()
+        entry.callback()
+      })
+      this.container.appendChild(btn)
+    }
 
     parent.appendChild(this.container)
-  }
-
-  onStartGame(cb: () => void): void {
-    this.onStart = cb
   }
 
   hide(): void {
