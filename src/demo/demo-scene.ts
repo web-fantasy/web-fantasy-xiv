@@ -151,18 +151,10 @@ export function startDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): vo
     }
   })
 
-  // --- Mouse world position (raycast ground plane) ---
+  // --- Mouse world position (ray-plane intersection, works outside arena) ---
   function updateMouseWorld(): void {
-    const pickResult = sceneManager.scene.pick(
-      sceneManager.scene.pointerX,
-      sceneManager.scene.pointerY,
-    )
-    if (pickResult?.pickedPoint) {
-      input.updateMouseWorldPos({
-        x: pickResult.pickedPoint.x,
-        y: pickResult.pickedPoint.z, // Babylon Z → game Y
-      })
-    }
+    const pos = sceneManager.pickGroundPosition()
+    if (pos) input.updateMouseWorldPos(pos)
   }
 
   // --- Game loop ---

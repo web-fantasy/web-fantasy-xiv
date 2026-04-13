@@ -1,4 +1,4 @@
-import { Engine, Scene, ArcRotateCamera, HemisphericLight, Vector3 } from '@babylonjs/core'
+import { Engine, Scene, ArcRotateCamera, HemisphericLight, Vector3, Plane } from '@babylonjs/core'
 
 export class SceneManager {
   readonly engine: Engine
@@ -15,7 +15,7 @@ export class SceneManager {
     this.camera = new ArcRotateCamera(
       'camera',
       -Math.PI / 2, // alpha: rotation around Y
-      (20 * Math.PI) / 180, // beta: 20° from zenith (~70° elevation)
+      (28 * Math.PI) / 180, // beta: 28° from zenith (~62° elevation)
       40, // radius: distance from target
       Vector3.Zero(),
       this.scene,
@@ -39,6 +39,23 @@ export class SceneManager {
       onBeforeRender()
       this.scene.render()
     })
+  }
+
+  /** Project screen mouse position to Y=0 ground plane (works even outside arena mesh) */
+  pickGroundPosition(): { x: number; y: number } | null {
+    const ray = this.scene.createPickingRay(
+      this.scene.pointerX,
+      this.scene.pointerY,
+      null,
+      this.camera,
+    )
+    // Intersect with Y=0 plane
+    const groundPlane = Plane.FromPositionAndNormal(Vector3.Zero(), Vector3.Up())
+    const distance = ray.intersectsPlane(groundPlane)
+    if (distance === null || distance < 0) return null
+
+    const hit = ray.origin.add(ray.direction.scale(distance))
+    return { x: hit.x, y: hit.z } // Babylon Z → game Y
   }
 
   dispose(): void {

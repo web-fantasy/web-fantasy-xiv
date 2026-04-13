@@ -88,7 +88,7 @@ export class EntityRenderer {
     if (entity.autoAttackRange > 0) {
       rangeRing = MeshBuilder.CreateTorus(`range-${entity.id}`, {
         diameter: entity.autoAttackRange * 2,
-        thickness: 0.04,
+        thickness: 0.12,
         tessellation: 48,
       }, this.scene)
       rangeRing.position.y = 0.02
