@@ -12,7 +12,8 @@ export class UIManager {
   private playerHp: HpBar
   private bossHp: HpBar
   private skillBar: SkillBar
-  private castBar: CastBar
+  private playerCastBar: CastBar
+  private bossCastBar: CastBar
   private damageFloater: DamageFloater
 
   constructor(
@@ -25,26 +26,41 @@ export class UIManager {
     this.bossHp = new HpBar(root, '', '#cc3333', 'top')
     this.playerHp = new HpBar(root, '', '#3388cc', 'bottom')
     this.skillBar = new SkillBar(root, skills)
-    this.castBar = new CastBar(root)
+    this.playerCastBar = new CastBar(root, {
+      position: 'bottom: 120px',
+      color: 'linear-gradient(90deg, #4a9eff, #82c0ff)',
+    })
+    this.bossCastBar = new CastBar(root, {
+      position: 'top: 50px',
+      color: 'linear-gradient(90deg, #cc5533, #ff7744)',
+    })
     this.damageFloater = new DamageFloater(root)
 
     bus.on('damage:dealt', (payload: { target: Entity; amount: number }) => {
-      // Simple: spawn at center of screen (proper world-to-screen in future)
       const x = window.innerWidth / 2 + (Math.random() - 0.5) * 100
       const y = window.innerHeight / 2 + (Math.random() - 0.5) * 50
       this.damageFloater.spawn(x, y, payload.amount, false)
     })
 
-    bus.on('skill:cast_start', (payload: { skill: { name: string } }) => {
-      this.castBar.show(payload.skill?.name ?? 'Casting...')
+    bus.on('skill:cast_start', (payload: { caster: Entity; skill: { name: string } }) => {
+      const bar = payload.caster.type === 'player' ? this.playerCastBar : this.bossCastBar
+      bar.show(payload.skill?.name ?? 'Casting...')
     })
 
-    bus.on('skill:cast_complete', () => {
-      this.castBar.hide()
+    bus.on('skill:cast_complete', (payload: { caster: Entity }) => {
+      if (payload.caster.type === 'player') {
+        this.playerCastBar.hide()
+      } else {
+        this.bossCastBar.hide()
+      }
     })
 
-    bus.on('skill:cast_interrupted', () => {
-      this.castBar.hide()
+    bus.on('skill:cast_interrupted', (payload: { caster: Entity }) => {
+      if (payload.caster?.type === 'player') {
+        this.playerCastBar.hide()
+      } else {
+        this.bossCastBar.hide()
+      }
     })
   }
 
@@ -54,7 +70,12 @@ export class UIManager {
     this.skillBar.update(player.gcdTimer, GCD_DURATION, getCooldown)
 
     if (player.casting) {
-      this.castBar.updateProgress(player.casting.elapsed, player.casting.castTime)
+      this.playerCastBar.updateProgress(player.casting.elapsed, player.casting.castTime)
+    }
+    if (boss.casting) {
+      this.bossCastBar.updateProgress(boss.casting.elapsed, boss.casting.castTime)
+    } else {
+      this.bossCastBar.hide()
     }
   }
 }
