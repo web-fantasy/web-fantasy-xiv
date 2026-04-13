@@ -18,6 +18,7 @@ import { CombatResolver } from '@/game/combat-resolver'
 import { PlayerInputDriver } from '@/game/player-input-driver'
 import { DisplacementAnimator } from '@/game/displacement-animator'
 import { UIManager } from '@/ui/ui-manager'
+import { TimelineDisplay } from '@/ui/timeline-display'
 import { PauseMenu } from '@/ui/pause-menu'
 import { DevTerminal } from '@/devtools/dev-terminal'
 import { CommandRegistry } from '@/devtools/commands'
@@ -148,6 +149,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
   const pauseMenu = new PauseMenu(uiRoot)
   const devTerminal = new DevTerminal(bus, new CommandRegistry())
   devTerminal.mount(uiRoot)
+  const timelineDisplay = new TimelineDisplay(uiRoot, TIMELINE_ACTIONS, skillMap)
 
   let paused = false
   let battleOver = false
@@ -237,6 +239,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
 
     displacer.update(dt)
     zoneMgr.update(dt)
+    timelineDisplay.update(scheduler.elapsed, dt)
   })
 
   sceneManager.startRenderLoop(() => {
