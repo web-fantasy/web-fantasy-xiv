@@ -61,9 +61,9 @@ export function buildSkillTooltip(skill: {
   targetType?: string
   gcd?: boolean
   requiresTarget?: boolean
-  effects?: { type: string; potency?: number; buffId?: string; distance?: number }[]
-  zones?: { shape?: { type: string; radius?: number; angle?: number; length?: number; width?: number } }[]
-}): string {
+  effects?: { type: string; potency?: number; buffId?: string; distance?: number; stacks?: number }[]
+  zones?: { shape?: { type: string; radius?: number; angle?: number; length?: number; width?: number }; effects?: any[] }[]
+}, buffDefs?: Map<string, { name: string; duration: number; type: string; effects: { type: string; value?: number }[] }>): string {
   const lines: string[] = []
 
   // Name + type
@@ -87,13 +87,26 @@ export function buildSkillTooltip(skill: {
   if (skill.effects?.length) {
     for (const e of skill.effects) {
       lines.push(`<div style="margin-top:3px">${formatEffect(e)}</div>`)
+      if (e.type === 'apply_buff' && e.buffId && buffDefs) {
+        const bd = buffDefs.get(e.buffId)
+        if (bd) lines.push(formatBuffDescription(bd))
+      }
     }
   }
 
-  // Zone shapes
+  // Zone shapes + zone effects
   if (skill.zones?.length) {
     for (const z of skill.zones) {
       if (z.shape) lines.push(`<div style="color:#888;font-size:11px">${formatShape(z.shape)}</div>`)
+      if (z.effects) {
+        for (const e of z.effects) {
+          lines.push(`<div style="margin-top:2px">${formatEffect(e)}</div>`)
+          if (e.type === 'apply_buff' && e.buffId && buffDefs) {
+            const bd = buffDefs.get(e.buffId)
+            if (bd) lines.push(formatBuffDescription(bd))
+          }
+        }
+      }
     }
   }
 
@@ -124,6 +137,12 @@ export function buildBuffTooltip(buff: {
   }
 
   return lines.join('')
+}
+
+function formatBuffDescription(bd: { name: string; duration: number; type: string; effects: { type: string; value?: number }[] }): string {
+  const dur = (bd.duration / 1000).toFixed(0)
+  const descs = bd.effects.map((e) => formatBuffEffect(e, 1)).join('，')
+  return `<div style="color:#aaa;font-size:11px;margin-left:8px;border-left:2px solid rgba(255,255,255,0.1);padding-left:6px">${bd.name} ${dur}s：${descs}</div>`
 }
 
 function formatEffect(e: { type: string; potency?: number; buffId?: string; distance?: number; stacks?: number }): string {

@@ -8,9 +8,11 @@ export class SkillBar {
   private cooldownTexts: HTMLSpanElement[] = []
   private entries: SkillBarEntry[]
   private tooltip: Tooltip
+  private buffDefs?: Map<string, any>
 
-  constructor(parent: HTMLDivElement, entries: SkillBarEntry[]) {
+  constructor(parent: HTMLDivElement, entries: SkillBarEntry[], buffDefs?: Map<string, any>) {
     this.tooltip = new Tooltip(parent)
+    this.buffDefs = buffDefs
     this.entries = entries
 
     const bar = document.createElement('div')
@@ -62,11 +64,11 @@ export class SkillBar {
 
       // Tooltip hover
       slot.addEventListener('mouseenter', (ev) => {
-        const html = buildSkillTooltip(entry.skill as any)
+        const html = buildSkillTooltip(entry.skill as any, this.buffDefs)
         this.tooltip.show(html, ev.clientX, ev.clientY)
       })
       slot.addEventListener('mousemove', (ev) => {
-        const html = buildSkillTooltip(entry.skill as any)
+        const html = buildSkillTooltip(entry.skill as any, this.buffDefs)
         this.tooltip.show(html, ev.clientX, ev.clientY)
       })
       slot.addEventListener('mouseleave', () => this.tooltip.hide())

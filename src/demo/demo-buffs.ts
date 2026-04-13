@@ -12,7 +12,7 @@ export const DEMO_BUFFS: Record<string, BuffDef> = {
   },
   embolden: {
     id: 'embolden',
-    name: '强化',
+    name: '攻击力提升',
     type: 'buff',
     duration: 8000,
     stackable: false,
@@ -29,3 +29,6 @@ export const DEMO_BUFFS: Record<string, BuffDef> = {
     effects: [{ type: 'mitigation', value: 0.4 }],
   },
 }
+
+// Map version for tooltip lookups
+export const DEMO_BUFF_MAP = new Map(Object.entries(DEMO_BUFFS))

@@ -32,6 +32,8 @@ export interface GameSceneConfig {
   arena: ArenaDef
   playerInputConfig: PlayerInputConfig
   skillBarEntries: SkillBarEntry[]
+  /** Buff definitions for tooltip display */
+  buffDefs?: Map<string, any>
   /** Called to restart this scene (for retry) */
   restart: () => void
 }
@@ -108,7 +110,7 @@ export class GameScene {
     this.camera = new CameraController()
 
     // UI
-    this.uiManager = new UIManager(config.uiRoot, this.bus, config.skillBarEntries)
+    this.uiManager = new UIManager(config.uiRoot, this.bus, config.skillBarEntries, config.buffDefs)
     this.uiManager.bindScene(this.sceneManager)
     this.uiManager.bindBuffSystem(this.buffSystem)
     this.pauseMenu = new PauseMenu(config.uiRoot)

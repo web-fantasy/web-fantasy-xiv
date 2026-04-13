@@ -2,7 +2,7 @@ import { GameScene } from '@/game/game-scene'
 import { BossBehavior } from '@/ai/boss-behavior'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import { DEMO_SKILL_BAR } from './demo-skill-bar'
-import { DEMO_BUFFS } from './demo-buffs'
+import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
 import type { ArenaDef, SkillDef } from '@/core/types'
 import type { Entity } from '@/entity/entity'
 
@@ -33,6 +33,7 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
       autoAttackSkill: AUTO_ATTACK,
       autoAttackInterval: 3000,
     },
+    buffDefs: DEMO_BUFF_MAP,
     restart: () => startBossAiDemo(canvas, uiRoot),
   })
 

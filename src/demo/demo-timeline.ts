@@ -4,7 +4,7 @@ import { TimelineScheduler } from '@/timeline/timeline-scheduler'
 import { TimelineDisplay } from '@/ui/timeline-display'
 import { loadEncounter } from '@/game/encounter-loader'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
-import { DEMO_BUFFS } from './demo-buffs'
+import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
 import { DEMO_SKILL_BAR } from './demo-skill-bar'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
@@ -28,6 +28,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       autoAttackSkill: AUTO_ATTACK,
       autoAttackInterval: 3000,
     },
+    buffDefs: DEMO_BUFF_MAP,
     restart: () => startTimelineDemo(canvas, uiRoot),
   })
 

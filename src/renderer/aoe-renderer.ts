@@ -88,6 +88,24 @@ export class AoeRenderer {
     this.enemyTelegraphMat.alpha = pulse
     this.enemyKbMat.alpha = pulse * 0.5
     this.playerTelegraphMat.alpha = pulse
+
+    // Animate displacement wave rings
+    for (const entry of this.meshes.values()) {
+      if (!entry.waveRing || entry.phase !== 'telegraph') continue
+      const hint = entry.zone.def.displacementHint
+      if (!hint) continue
+
+      const cycle = (time * 0.0007) % 1
+      if (hint === 'knockback') {
+        const scale = 0.2 + cycle * 0.8
+        entry.waveRing.scaling.set(scale, 1, scale)
+        ;(entry.waveRing.material as StandardMaterial).alpha = (1 - cycle) * 0.3
+      } else {
+        const scale = 1.0 - cycle * 0.8
+        entry.waveRing.scaling.set(scale, 1, scale)
+        ;(entry.waveRing.material as StandardMaterial).alpha = cycle * 0.3
+      }
+    }
   }
 
   private isPlayerCaster(zone: ActiveAoeZone): boolean {

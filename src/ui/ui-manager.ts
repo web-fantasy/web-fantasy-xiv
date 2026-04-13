@@ -31,12 +31,13 @@ export class UIManager {
     root: HTMLDivElement,
     bus: EventBus,
     entries: SkillBarEntry[],
+    buffDefs?: Map<string, any>,
   ) {
     DamageFloater.injectStyles()
 
     this.bossHp = new HpBar(root, '', '#cc3333', 'top')     // red
     this.playerHp = new HpBar(root, '', '#44aa44', 'bottom') // green
-    this.skillBar = new SkillBar(root, entries)
+    this.skillBar = new SkillBar(root, entries, buffDefs)
     this.playerCastBar = new CastBar(root, {
       position: 'bottom: 120px',
       color: 'linear-gradient(90deg, #4a9eff, #82c0ff)',

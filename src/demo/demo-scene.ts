@@ -1,7 +1,7 @@
 import { GameScene } from '@/game/game-scene'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import { DEMO_SKILL_BAR } from './demo-skill-bar'
-import { DEMO_BUFFS } from './demo-buffs'
+import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
 import type { ArenaDef } from '@/core/types'
 
 const ARENA: ArenaDef = {
@@ -24,6 +24,7 @@ export function startDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): vo
       autoAttackSkill: AUTO_ATTACK,
       autoAttackInterval: 3000,
     },
+    buffDefs: DEMO_BUFF_MAP,
     restart: () => startDemo(canvas, uiRoot),
   })
 
