@@ -8,23 +8,21 @@ import type { EventBus } from '@/core/event-bus'
 import type { Arena } from '@/arena/arena'
 import { computeMoveDirection, computeFacingAngle } from '@/input/input-manager'
 
+/** How far in advance (ms) a skill can be queued before GCD/CD completes */
+const SKILL_QUEUE_WINDOW = 500
+/** Slidecast window: movement won't interrupt cast within this many ms of completion */
+const SLIDECAST_WINDOW = 300
+
 export interface PlayerInputConfig {
-  /** Skills bound to number keys (index 0 = key 1, etc.) */
   skills: SkillDef[]
-  /** Extra skill bindings (e.g. 100=Q, 101=E) */
   extraSkills?: Map<number, SkillDef>
-  /** Auto-attack skill (no GCD, fires on interval when target locked) */
   autoAttackSkill?: SkillDef
-  /** Auto-attack interval in ms */
   autoAttackInterval: number
 }
 
-/**
- * Binds keyboard/mouse input to a player entity.
- * Handles: movement, facing, targeting, skill use, ESC priority chain.
- * Displacement effects are handled by CombatResolver, not here.
- */
 export class PlayerInputDriver {
+  private queuedSkill: SkillDef | null = null
+
   constructor(
     private entity: Entity,
     private input: InputManager,
@@ -36,7 +34,6 @@ export class PlayerInputDriver {
     private config: PlayerInputConfig,
   ) {}
 
-  /** Returns 'pause' if ESC should trigger pause (no higher-priority action consumed it) */
   update(dt: number): 'pause' | null {
     const p = this.entity
 
@@ -44,6 +41,7 @@ export class PlayerInputDriver {
     if (this.input.consumeEsc()) {
       if (p.casting) {
         this.skillResolver.interruptCast(p)
+        this.queuedSkill = null
       } else if (p.target) {
         p.target = null
         this.bus.emit('target:released', { entity: p })
@@ -52,12 +50,18 @@ export class PlayerInputDriver {
       }
     }
 
-    // Movement (blocked while stunned, interrupts casting)
+    // Movement (blocked while stunned)
     if (!this.buffSystem.isStunned(p)) {
       const dir = computeMoveDirection(this.input.keys)
       if (dir.x !== 0 || dir.y !== 0) {
+        // Slidecast: movement only interrupts casting if remaining > SLIDECAST_WINDOW
         if (p.casting) {
-          this.skillResolver.interruptCast(p)
+          const remaining = p.casting.castTime - p.casting.elapsed
+          if (remaining > SLIDECAST_WINDOW) {
+            this.skillResolver.interruptCast(p)
+            this.queuedSkill = null
+          }
+          // else: slidecast window — allow movement without interrupting
         }
 
         const speedMod = this.buffSystem.getSpeedModifier(p)
@@ -90,7 +94,7 @@ export class PlayerInputDriver {
       }
     }
 
-    // Skill keys
+    // Skill input → try use or queue
     const skillIdx = this.input.consumeSkillPress()
     if (skillIdx !== null) {
       const skill = skillIdx < this.config.skills.length
@@ -98,10 +102,15 @@ export class PlayerInputDriver {
         : this.config.extraSkills?.get(skillIdx) ?? null
 
       if (skill) {
-        if (skill.requiresTarget && !p.target) {
-          this.autoLockNearest()
-        }
-        this.skillResolver.tryUse(p, skill)
+        if (skill.requiresTarget && !p.target) this.autoLockNearest()
+        this.tryUseOrQueue(skill)
+      }
+    }
+
+    // Try to flush queued skill
+    if (this.queuedSkill) {
+      if (this.skillResolver.tryUse(p, this.queuedSkill)) {
+        this.queuedSkill = null
       }
     }
 
@@ -114,11 +123,51 @@ export class PlayerInputDriver {
       }
     }
 
-    // Tick ALL entities' GCD / casting / cooldowns (not just player)
+    // Tick ALL entities' GCD / casting / cooldowns
     this.skillResolver.updateAll(dt)
     this.buffSystem.update(p, dt)
 
     return null
+  }
+
+  private tryUseOrQueue(skill: SkillDef): void {
+    const p = this.entity
+
+    // Try immediately
+    if (this.skillResolver.tryUse(p, skill)) {
+      this.queuedSkill = null
+      return
+    }
+
+    // Queue if GCD or CD is within the queue window
+    const canQueue = this.isWithinQueueWindow(skill)
+    if (canQueue) {
+      this.queuedSkill = skill
+    }
+  }
+
+  private isWithinQueueWindow(skill: SkillDef): boolean {
+    const p = this.entity
+
+    // Can't queue while stunned
+    if (this.buffSystem.isStunned(p)) return false
+
+    // GCD skill: queue if GCD remaining <= window
+    if (skill.gcd && p.gcdTimer > 0 && p.gcdTimer <= SKILL_QUEUE_WINDOW) return true
+
+    // Ability with independent CD: queue if CD remaining <= window
+    if (!skill.gcd && skill.cooldown > 0) {
+      const cd = this.skillResolver.getCooldown(p.id, skill.id)
+      if (cd > 0 && cd <= SKILL_QUEUE_WINDOW) return true
+    }
+
+    // Currently casting: queue if cast remaining <= window
+    if (p.casting) {
+      const remaining = p.casting.castTime - p.casting.elapsed
+      if (remaining > 0 && remaining <= SKILL_QUEUE_WINDOW) return true
+    }
+
+    return false
   }
 
   private autoLockNearest(): void {
