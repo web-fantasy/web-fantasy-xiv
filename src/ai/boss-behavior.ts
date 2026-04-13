@@ -31,7 +31,7 @@ export interface BossBehaviorConfig {
 
 const DEFAULT_CONFIG: BossBehaviorConfig = {
   chaseRange: 5,
-  autoAttackRange: 7,
+  autoAttackRange: 15,
   autoAttackInterval: 3000,
 }
 
@@ -45,6 +45,14 @@ export class BossBehavior {
     config?: Partial<BossBehaviorConfig>,
   ) {
     this.config = { ...DEFAULT_CONFIG, ...config }
+    // chaseRange defaults to autoAttackRange if not explicitly set
+    if (config && config.autoAttackRange != null && config.chaseRange == null) {
+      this.config.chaseRange = this.config.autoAttackRange
+    }
+    // Guard: chaseRange must not exceed autoAttackRange
+    if (this.config.chaseRange > this.config.autoAttackRange) {
+      this.config.chaseRange = this.config.autoAttackRange
+    }
     if (this.config.aggroRange == null) {
       this.config.aggroRange = this.config.chaseRange
     }

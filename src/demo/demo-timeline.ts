@@ -271,7 +271,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
 
   const bossAI = new BossBehavior(boss, {
     chaseRange: 5,
-    autoAttackRange: 7,
+    autoAttackRange: 15,
     autoAttackInterval: 3000,
   })
   bossAI.lockFacing(180)

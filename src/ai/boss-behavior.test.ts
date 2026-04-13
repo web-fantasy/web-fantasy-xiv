@@ -15,7 +15,7 @@ describe('BossBehavior', () => {
       position: { x: 5, y: 0, z: 0 },
     })
     const behavior = new BossBehavior(boss, {
-      chaseRange: 5, autoAttackRange: 7, autoAttackInterval: 3000,
+      chaseRange: 5, autoAttackRange: 15, autoAttackInterval: 3000,
     })
     return { boss, player, behavior }
   }
@@ -42,18 +42,30 @@ describe('BossBehavior', () => {
     expect(boss.position.x).toBe(prevX)
   })
 
-  it('should auto-attack within autoAttackRange even beyond chaseRange', () => {
+  it('should auto-attack within autoAttackRange even well beyond chaseRange', () => {
     const { boss, player, behavior } = setup()
-    player.position = { x: 6, y: 0, z: 0 } // outside chaseRange (5) but inside autoAttackRange (7)
-    boss.facing = 90 // facing east toward player
+    player.position = { x: 12, y: 0, z: 0 } // far beyond chaseRange (5) but inside autoAttackRange (15)
+    boss.facing = 90
     expect(behavior.isInAutoAttackRange(player)).toBe(true)
   })
 
   it('should not auto-attack beyond autoAttackRange', () => {
     const { boss, player, behavior } = setup()
-    player.position = { x: 8, y: 0, z: 0 } // outside autoAttackRange (7)
+    player.position = { x: 16, y: 0, z: 0 } // outside autoAttackRange (15)
     boss.facing = 90
     expect(behavior.isInAutoAttackRange(player)).toBe(false)
+  })
+
+  it('should default chaseRange to autoAttackRange if not set', () => {
+    const boss = createEntity({ id: 'b', type: 'boss', speed: 3 })
+    const b = new BossBehavior(boss, { autoAttackRange: 10, autoAttackInterval: 3000 })
+    expect(b.config.chaseRange).toBe(10)
+  })
+
+  it('should clamp chaseRange to not exceed autoAttackRange', () => {
+    const boss = createEntity({ id: 'b', type: 'boss', speed: 3 })
+    const b = new BossBehavior(boss, { chaseRange: 20, autoAttackRange: 10, autoAttackInterval: 3000 })
+    expect(b.config.chaseRange).toBe(10)
   })
 
   it('should not move or change facing while casting', () => {

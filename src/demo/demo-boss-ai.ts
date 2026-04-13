@@ -72,7 +72,7 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
 
   const bossAI = new BossBehavior(boss, {
     chaseRange: 5,
-    autoAttackRange: 7,
+    autoAttackRange: 15,
     autoAttackInterval: 3000,
     aggroRange: 8,
   })
