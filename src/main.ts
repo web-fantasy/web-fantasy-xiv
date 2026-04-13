@@ -1,6 +1,7 @@
 import { MainMenu } from './ui/main-menu'
 import { startDemo } from './demo/demo-scene'
 import { startBossAiDemo } from './demo/demo-boss-ai'
+import { startTimelineDemo } from './demo/demo-timeline'
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement
 const uiRoot = document.getElementById('ui-overlay') as HTMLDivElement
@@ -15,5 +16,10 @@ new MainMenu(uiRoot, [
     label: 'Boss AI Test',
     description: 'Aggro, tracking, auto-attack',
     callback: () => startBossAiDemo(canvas, uiRoot),
+  },
+  {
+    label: 'Timeline Test',
+    description: 'Clockwise fan rotation, 30s enrage',
+    callback: () => startTimelineDemo(canvas, uiRoot),
   },
 ])
