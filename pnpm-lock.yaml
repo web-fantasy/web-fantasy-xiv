@@ -7,16 +7,20 @@ settings:
 importers:
 
   .:
+    dependencies:
+      yaml:
+        specifier: ^2.8.3
+        version: 2.8.3
     devDependencies:
       typescript:
         specifier: ^6.0.2
         version: 6.0.2
       vite:
         specifier: ^8.0.8
-        version: 8.0.8
+        version: 8.0.8(yaml@2.8.3)
       vitest:
         specifier: ^4.1.4
-        version: 4.1.4(vite@8.0.8)
+        version: 4.1.4(vite@8.0.8(yaml@2.8.3))
 
 packages:
 
@@ -441,6 +445,11 @@ packages:
     engines: {node: '>=8'}
     hasBin: true
 
+  yaml@2.8.3:
+    resolution: {integrity: sha512-AvbaCLOO2Otw/lW5bmh9d/WEdcDFdQp2Z2ZUH3pX9U2ihyUY0nvLv7J6TrWowklRGPYbB/IuIMfYgxaCPg5Bpg==}
+    engines: {node: '>= 14.6'}
+    hasBin: true
+
 snapshots:
 
   '@emnapi/core@1.9.2':
@@ -546,13 +555,13 @@ snapshots:
       chai: 6.2.2
       tinyrainbow: 3.1.0
 
-  '@vitest/mocker@4.1.4(vite@8.0.8)':
+  '@vitest/mocker@4.1.4(vite@8.0.8(yaml@2.8.3))':
     dependencies:
       '@vitest/spy': 4.1.4
       estree-walker: 3.0.3
       magic-string: 0.30.21
     optionalDependencies:
-      vite: 8.0.8
+      vite: 8.0.8(yaml@2.8.3)
 
   '@vitest/pretty-format@4.1.4':
     dependencies:
@@ -715,7 +724,7 @@ snapshots:
 
   typescript@6.0.2: {}
 
-  vite@8.0.8:
+  vite@8.0.8(yaml@2.8.3):
     dependencies:
       lightningcss: 1.32.0
       picomatch: 4.0.4
@@ -724,11 +733,12 @@ snapshots:
       tinyglobby: 0.2.16
     optionalDependencies:
       fsevents: 2.3.3
+      yaml: 2.8.3
 
-  vitest@4.1.4(vite@8.0.8):
+  vitest@4.1.4(vite@8.0.8(yaml@2.8.3)):
     dependencies:
       '@vitest/expect': 4.1.4
-      '@vitest/mocker': 4.1.4(vite@8.0.8)
+      '@vitest/mocker': 4.1.4(vite@8.0.8(yaml@2.8.3))
       '@vitest/pretty-format': 4.1.4
       '@vitest/runner': 4.1.4
       '@vitest/snapshot': 4.1.4
@@ -745,7 +755,7 @@ snapshots:
       tinyexec: 1.1.1
       tinyglobby: 0.2.16
       tinyrainbow: 3.1.0
-      vite: 8.0.8
+      vite: 8.0.8(yaml@2.8.3)
       why-is-node-running: 2.3.0
     transitivePeerDependencies:
       - msw
@@ -754,3 +764,5 @@ snapshots:
     dependencies:
       siginfo: 2.0.0
       stackback: 0.0.2
+
+  yaml@2.8.3: {}
