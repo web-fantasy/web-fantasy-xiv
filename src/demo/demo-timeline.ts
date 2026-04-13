@@ -83,6 +83,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
 
   s.bus.on('damage:dealt', (payload: { source: Entity; target: Entity }) => {
     if (payload.target.id === boss.id && !combatStarted) engageCombat()
+    if (payload.target.id === boss.id && payload.target.hp <= 0) s.onBattleEnd('victory')
     if (payload.target.id === s.player.id && payload.target.hp <= 0) s.onBattleEnd('wipe')
   })
 

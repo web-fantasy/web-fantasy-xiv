@@ -16,6 +16,7 @@ const BOSS_AUTO: SkillDef = {
   id: 'boss_auto', name: '攻撃', type: 'ability',
   castTime: 0, cooldown: 0, gcd: false,
   targetType: 'single', requiresTarget: true, range: 15,
+  mpCost: 0,
   effects: [{ type: 'damage', potency: 1 }],
 }
 
@@ -42,7 +43,7 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
   s.createPlayer({
     id: 'player', type: 'player',
     position: { x: 0, y: -12, z: 0 },
-    hp: 30000, maxHp: 30000, attack: 1000,
+    hp: 30000, maxHp: 30000, mp: 10000, maxMp: 10000, attack: 1000,
     speed: 6, size: 0.5, autoAttackRange: 5,
   })
 
@@ -73,6 +74,7 @@ export function startBossAiDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElemen
 
   s.bus.on('damage:dealt', (payload: { source: Entity; target: Entity }) => {
     if (payload.target.id === boss.id && !boss.inCombat) engageCombat()
+    if (payload.target.id === boss.id && payload.target.hp <= 0) s.onBattleEnd('victory')
     if (payload.target.id === s.player.id && payload.target.hp <= 0) s.onBattleEnd('wipe')
   })
 

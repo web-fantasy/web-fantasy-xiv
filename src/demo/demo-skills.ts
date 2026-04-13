@@ -11,6 +11,7 @@ export const AUTO_ATTACK: SkillDef = {
   targetType: 'single',
   requiresTarget: true,
   range: 5,
+  mpCost: 0,
   effects: [{ type: 'damage', potency: 1 }],
 }
 
@@ -26,6 +27,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     targetType: 'single',
     requiresTarget: true,
     range: 5,
+    mpCost: 0,
     effects: [{ type: 'damage', potency: 2 }],
   },
   // 2: 直线射击（矩形魔法，有咏唱）
@@ -39,6 +41,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     targetType: 'aoe',
     requiresTarget: true,
     range: 15,
+    mpCost: 0,
     zones: [{
       anchor: { type: 'caster' },
       direction: { type: 'toward_target' },
@@ -59,6 +62,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     targetType: 'aoe',
     requiresTarget: true,
     range: 8,
+    mpCost: 0,
     zones: [{
       anchor: { type: 'caster' },
       direction: { type: 'toward_target' },
@@ -79,6 +83,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     targetType: 'single',
     requiresTarget: false,
     range: 0,
+    mpCost: 0,
     effects: [{ type: 'apply_buff', buffId: 'embolden' }],
   },
   // 5: 铁壁（减伤40%，8s）
@@ -92,9 +97,10 @@ export const DEMO_SKILLS: SkillDef[] = [
     targetType: 'single',
     requiresTarget: false,
     range: 0,
+    mpCost: 0,
     effects: [{ type: 'apply_buff', buffId: 'rampart' }],
   },
-  // 6: 治疗魔法（1.8s咏唱，自身回血）
+  // 6: 治疗魔法（1.8s咏唱，自身回血，消耗MP）
   {
     id: 'cure',
     name: '治疗',
@@ -105,7 +111,8 @@ export const DEMO_SKILLS: SkillDef[] = [
     targetType: 'single',
     requiresTarget: false,
     range: 0,
-    effects: [{ type: 'heal', potency: 5 }],
+    mpCost: 2400,
+    effects: [{ type: 'heal', potency: 12.5 }],
   },
 ]
 
@@ -120,6 +127,7 @@ export const SKILL_DASH: SkillDef = {
   targetType: 'single',
   requiresTarget: true,
   range: 15,
+  mpCost: 0,
   effects: [{ type: 'dash' }],
 }
 
@@ -133,6 +141,5 @@ export const SKILL_BACKSTEP: SkillDef = {
   gcd: false,
   targetType: 'single',
   requiresTarget: true,
-  range: 5,
-  effects: [{ type: 'backstep', distance: 10 }],
+  range: 5,  mpCost: 0,  effects: [{ type: 'backstep', distance: 10 }],
 }

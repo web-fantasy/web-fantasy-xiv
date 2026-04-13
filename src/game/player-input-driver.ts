@@ -13,6 +13,10 @@ const SLIDECAST_WINDOW = 300
 const REGEN_INTERVAL = 3000
 const REGEN_RATE_IDLE = 0.20  // 20% max HP per tick out of combat
 const REGEN_RATE_COMBAT = 0.02 // 2% max HP per tick in combat
+const MP_REGEN_INTERVAL = 3000
+const MP_REGEN_AMOUNT = 500
+const MP_REGEN_INTERVAL_IDLE = 3000
+const MP_REGEN_AMOUNT_IDLE = 5000
 
 export interface PlayerInputConfig {
   skills: SkillDef[]
@@ -24,6 +28,7 @@ export interface PlayerInputConfig {
 export class PlayerInputDriver {
   private queuedSkill: SkillDef | null = null
   private regenTimer = 0
+  private mpRegenTimer = 0
 
   constructor(
     private entity: Entity,
@@ -137,6 +142,17 @@ export class PlayerInputDriver {
         const rate = p.inCombat ? REGEN_RATE_COMBAT : REGEN_RATE_IDLE
         const heal = Math.floor(p.maxHp * rate)
         p.hp = Math.min(p.maxHp, p.hp + heal)
+      }
+    }
+
+    // Passive MP regen
+    if (p.alive && p.maxMp > 0 && p.mp < p.maxMp) {
+      this.mpRegenTimer += dt
+      const interval = p.inCombat ? MP_REGEN_INTERVAL : MP_REGEN_INTERVAL_IDLE
+      const amount = p.inCombat ? MP_REGEN_AMOUNT : MP_REGEN_AMOUNT_IDLE
+      if (this.mpRegenTimer >= interval) {
+        this.mpRegenTimer -= interval
+        p.mp = Math.min(p.maxMp, p.mp + amount)
       }
     }
 

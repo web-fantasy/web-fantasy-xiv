@@ -55,6 +55,8 @@ export function parseEncounterYaml(yamlText: string): EncounterData {
   const player: Partial<CreateEntityOptions> = {
     hp: raw.player?.hp ?? 30000,
     maxHp: raw.player?.hp ?? 30000,
+    mp: raw.player?.mp ?? 0,
+    maxMp: raw.player?.mp ?? 0,
     attack: raw.player?.attack ?? 1000,
     speed: raw.player?.speed ?? 6,
     size: raw.player?.size ?? 0.5,

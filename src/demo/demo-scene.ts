@@ -31,7 +31,7 @@ export function startDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): vo
   scene.createPlayer({
     id: 'player', type: 'player',
     position: { x: 0, y: -5, z: 0 },
-    hp: 30000, maxHp: 30000, attack: 1000,
+    hp: 30000, maxHp: 30000, mp: 10000, maxMp: 10000, attack: 1000,
     speed: 6, size: 0.5, autoAttackRange: 5,
   })
   scene.player.inCombat = true

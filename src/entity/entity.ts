@@ -26,6 +26,8 @@ export interface Entity {
 
   hp: number
   maxHp: number
+  mp: number
+  maxMp: number
   attack: number
 
   autoAttackRange: number   // max range for auto-attack
@@ -51,6 +53,8 @@ export interface CreateEntityOptions {
   size?: number
   hp?: number
   maxHp?: number
+  mp?: number
+  maxMp?: number
   attack?: number
   autoAttackRange?: number
   aggroRange?: number
@@ -59,6 +63,7 @@ export interface CreateEntityOptions {
 
 export function createEntity(opts: CreateEntityOptions): Entity {
   const maxHp = opts.maxHp ?? opts.hp ?? 0
+  const maxMp = opts.maxMp ?? opts.mp ?? 0
   return {
     id: opts.id,
     type: opts.type,
@@ -68,6 +73,8 @@ export function createEntity(opts: CreateEntityOptions): Entity {
     size: opts.size ?? 0.5,
     hp: opts.hp ?? maxHp,
     maxHp,
+    mp: opts.mp ?? maxMp,
+    maxMp,
     attack: opts.attack ?? 0,
     autoAttackRange: opts.autoAttackRange ?? 0,
     aggroRange: opts.aggroRange ?? 0,

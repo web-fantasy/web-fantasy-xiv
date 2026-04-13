@@ -78,11 +78,12 @@ export class CombatResolver {
         }
 
         case 'heal': {
-          const healTarget = target ?? caster // self-heal if no target
-          if (!healTarget) break
-          const healAmount = Math.floor((caster?.attack ?? healTarget.attack) * effect.potency)
-          healTarget.hp = Math.min(healTarget.maxHp, healTarget.hp + healAmount)
-          this.bus.emit('damage:dealt', { source: caster ?? healTarget, target: healTarget, amount: -healAmount, skill: null })
+          // Heal only applies to friendly targets (same type as caster); otherwise fallback to caster
+          const friendlyTarget = (target && caster && target.type === caster.type) ? target : caster
+          if (!friendlyTarget) break
+          const healAmount = Math.floor((caster?.attack ?? friendlyTarget.attack) * effect.potency)
+          friendlyTarget.hp = Math.min(friendlyTarget.maxHp, friendlyTarget.hp + healAmount)
+          this.bus.emit('damage:dealt', { source: caster ?? friendlyTarget, target: friendlyTarget, amount: -healAmount, skill: null })
           break
         }
 

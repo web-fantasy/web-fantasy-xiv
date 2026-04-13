@@ -56,6 +56,7 @@ export function parseSkillConfig(raw: any): SkillDef {
     targetType: raw.targetType ?? 'single',
     requiresTarget: raw.requiresTarget ?? false,
     range: raw.range ?? 0,
+    mpCost: raw.mpCost ?? 0,
     zones: raw.zones?.map((z: any) => parseZone(z)),
     effects: raw.effects as SkillEffectDef[] | undefined,
   }

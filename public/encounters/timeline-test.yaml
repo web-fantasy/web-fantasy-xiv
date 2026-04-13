@@ -10,7 +10,7 @@ arena:
 boss:
   name: Test Boss
   type: boss
-  hp: 500000
+  hp: 85000
   attack: 1
   speed: 4
   size: 1.5
@@ -19,8 +19,9 @@ boss:
 
 player:
   hp: 50000
+  mp: 10000
   attack: 1000
-  speed: 6
+  speed: 5
   size: 0.5
   autoAttackRange: 5
 
@@ -40,10 +41,12 @@ skills:
     zones:
       - anchor: { type: caster }
         direction: { type: fixed, angle: 180 }
-        shape: { type: fan, radius: 12, angle: 90 }
+        shape: { type: fan, radius: 15, angle: 90 }
         resolveDelay: 3000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   fan_w:
     name: 扇形斬・右
@@ -53,10 +56,12 @@ skills:
     zones:
       - anchor: { type: caster }
         direction: { type: fixed, angle: 270 }
-        shape: { type: fan, radius: 12, angle: 90 }
+        shape: { type: fan, radius: 15, angle: 90 }
         resolveDelay: 3000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   fan_n:
     name: 扇形斬・後
@@ -66,10 +71,12 @@ skills:
     zones:
       - anchor: { type: caster }
         direction: { type: fixed, angle: 0 }
-        shape: { type: fan, radius: 12, angle: 90 }
+        shape: { type: fan, radius: 15, angle: 90 }
         resolveDelay: 3000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   fan_e:
     name: 扇形斬・左
@@ -79,10 +86,12 @@ skills:
     zones:
       - anchor: { type: caster }
         direction: { type: fixed, angle: 90 }
-        shape: { type: fan, radius: 12, angle: 90 }
+        shape: { type: fan, radius: 15, angle: 90 }
         resolveDelay: 3000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   lr_cleave:
     name: 左右開弓
@@ -93,26 +102,26 @@ skills:
       # Left 180°: telegraph from start, resolves at 5s
       - anchor: { type: caster }
         direction: { type: fixed, angle: 90 }
-        shape: { type: fan, radius: 14, angle: 180 }
+        shape: { type: fan, radius: 15, angle: 180 }
         resolveDelay: 5000
         telegraphBefore: 5000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 15000 }
+          - { type: damage, potency: 20000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Right 180°: telegraph 4s before resolve, resolves at 7s
       - anchor: { type: caster }
         direction: { type: fixed, angle: 270 }
-        shape: { type: fan, radius: 14, angle: 180 }
+        shape: { type: fan, radius: 15, angle: 180 }
         resolveDelay: 7000
         telegraphBefore: 4000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 15000 }
+          - { type: damage, potency: 20000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   pull_cast:
-    name: 引力漩渦
+    name: 引力冲击
     type: spell
     castTime: 5000
     targetType: aoe
@@ -124,34 +133,38 @@ skills:
         hitEffectDuration: 500
         effects:
           - { type: damage, potency: 2000 }
-          - { type: pull, distance: 99, source: { type: caster } }
-        displacementHint: pull
+          - { type: knockback, distance: 10, source: { type: caster } }
+        displacementHint: knockback
 
   iron_lunar:
-    name: 鋼鉄月環
+    name: 钢铁月环
     type: spell
     castTime: 5000
     targetType: aoe
     zones:
+      # Lunar Dynamo (ring): telegraph at 3s, resolves at 8s
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: ring, innerRadius: 6, outerRadius: 16 }
+        resolveDelay: 5000
+        telegraphBefore: 5000
+        hitEffectDuration: 500
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Iron Chariot (circle): resolves at 5s
       - anchor: { type: caster }
         direction: { type: none }
         shape: { type: circle, radius: 6 }
-        resolveDelay: 5000
-        telegraphBefore: 5000
-        hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
-      # Lunar Dynamo (ring): telegraph at 3s, resolves at 8s
-      - anchor: { type: caster }
-        direction: { type: none }
-        shape: { type: ring, innerRadius: 6, outerRadius: 14 }
         resolveDelay: 8000
         telegraphBefore: 5000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   pull_instant:
-    name: 引力崩壊
+    name: 引力牵拉
     type: ability
     targetType: aoe
     zones:
@@ -161,11 +174,11 @@ skills:
         resolveDelay: 0
         hitEffectDuration: 300
         effects:
-          - { type: pull, distance: 6, source: { type: caster } }
+          - { type: pull, distance: 99, source: { type: caster } }
         displacementHint: pull
 
   cross_cut:
-    name: 十字斬
+    name: 十字斩
     type: spell
     castTime: 5000
     targetType: aoe
@@ -177,7 +190,9 @@ skills:
         resolveDelay: 5000
         telegraphBefore: 3000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Horizontal (W→E)
       - anchor: { type: position, x: -15, y: 0 }
         direction: { type: fixed, angle: 90 }
@@ -185,31 +200,48 @@ skills:
         resolveDelay: 5000
         telegraphBefore: 3000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 15000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   boss_front:
-    name: 前方斬撃
+    name: 前方斩击
     type: spell
     castTime: 3000
     targetType: aoe
     zones:
       - anchor: { type: caster }
         direction: { type: caster_facing }
-        shape: { type: fan, radius: 12, angle: 180 }
+        shape: { type: fan, radius: 30, angle: 180 }
         resolveDelay: 3000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 12000 }]
+        effects:
+          - { type: damage, potency: 20000 }
+          - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   boss_auto:
-    name: 攻撃
+    name: 攻击
     type: ability
     targetType: single
     requiresTarget: true
     range: 15
-    effects: [{ type: damage, potency: 500 }]
+    effects: [{ type: damage, potency: 1000 }]
+
+  arena_pulse:
+    name: 震撼登场
+    type: spell
+    castTime: 2000
+    targetType: aoe
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 99 }
+        resolveDelay: 2000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 16700 }]
 
   enrage:
-    name: 時間切迫
+    name: 时间的尽头
     type: spell
     castTime: 10000
     targetType: aoe
@@ -219,7 +251,7 @@ skills:
         shape: { type: circle, radius: 99 }
         resolveDelay: 10000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 999999 }]
+        effects: [{ type: damage, potency: 999999999 }]
 
 # Timeline (boss actions after combat starts)
 timeline:
@@ -236,6 +268,10 @@ timeline:
   - at: 10000
     action: lock_facing
     facing: 180
+
+  # 衝撃波: full-screen AOE, deals 1/3 HP, teaches player to heal
+  - at: 11000
+    use: arena_pulse
 
   # Phase 1 (14-26s): clockwise fans
   - at: 14000

@@ -4,12 +4,13 @@ export class HpBar {
   private fill: HTMLDivElement
   private text: HTMLSpanElement
 
-  constructor(parent: HTMLDivElement, label: string, color: string, position: 'top' | 'bottom') {
+  constructor(parent: HTMLDivElement, label: string, color: string, position: 'top' | 'bottom' | 'bottom2') {
     this.container = document.createElement('div')
+    const posStyle = position === 'top' ? 'top: 20px' : position === 'bottom2' ? 'bottom: 108px' : 'bottom: 80px'
     this.container.style.cssText = `
-      position: absolute; ${position === 'top' ? 'top: 20px' : 'bottom: 80px'};
+      position: absolute; ${posStyle};
       left: 50%; transform: translateX(-50%);
-      width: 300px; height: 24px;
+      width: 300px; height: ${position === 'bottom2' ? '16px' : '24px'};
       background: rgba(0,0,0,0.7); border: 1px solid rgba(255,255,255,0.3);
       border-radius: 3px; overflow: hidden;
     `

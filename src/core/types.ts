@@ -70,6 +70,7 @@ export interface SkillDef {
   targetType: TargetType
   requiresTarget: boolean  // true = must have a locked enemy target to cast
   range: number            // max cast distance (only checked when requiresTarget=true)
+  mpCost: number           // MP consumed on use (0 = free)
   zones?: AoeZoneDef[]
   effects?: SkillEffectDef[]
 }

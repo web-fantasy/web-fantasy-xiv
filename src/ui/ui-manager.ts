@@ -18,6 +18,7 @@ export interface SkillBarEntry {
 
 export class UIManager {
   private playerHp: HpBar
+  private playerMp: HpBar
   private bossHp: HpBar
   private skillBar: SkillBar
   private playerCastBar: CastBar
@@ -37,6 +38,7 @@ export class UIManager {
 
     this.bossHp = new HpBar(root, '', '#cc3333', 'top')     // red
     this.playerHp = new HpBar(root, '', '#44aa44', 'bottom') // green
+    this.playerMp = new HpBar(root, '', '#4488cc', 'bottom2') // blue MP bar
     this.skillBar = new SkillBar(root, entries, buffDefs)
     this.playerCastBar = new CastBar(root, {
       position: 'bottom: 120px',
@@ -105,6 +107,7 @@ export class UIManager {
 
   update(player: Entity, boss: Entity, getCooldown: (skillId: string) => number): void {
     this.playerHp.update(player.hp, player.maxHp)
+    if (player.maxMp > 0) this.playerMp.update(player.mp, player.maxMp)
     this.bossHp.update(boss.hp, boss.maxHp)
     this.skillBar.update(player.gcdTimer, GCD_DURATION, getCooldown)
 

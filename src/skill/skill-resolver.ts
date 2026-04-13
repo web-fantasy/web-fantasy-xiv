@@ -59,6 +59,9 @@ export class SkillResolver {
     // Independent cooldown check
     if (skill.cooldown > 0 && this.getCooldown(caster.id, skill.id) > 0) return false
 
+    // MP check
+    if (skill.mpCost > 0 && caster.mp < skill.mpCost) return false
+
     // Target check
     if (skill.requiresTarget) {
       const target = caster.target ? this.entityMgr.get(caster.target) : null
@@ -101,6 +104,9 @@ export class SkillResolver {
   }
 
   private resolveImmediate(caster: Entity, skill: SkillDef): boolean {
+    // Deduct MP
+    if (skill.mpCost > 0) caster.mp -= skill.mpCost
+
     if (skill.gcd) {
       caster.gcdTimer = GCD_DURATION
     }
@@ -221,6 +227,9 @@ export class SkillResolver {
 
     // Zones were already spawned at cast start (startCast),
     // so we only emit completion here.
+    // Deduct MP on successful cast completion
+    if (skill && skill.mpCost > 0) entity.mp -= skill.mpCost
+
     this.bus.emit('skill:cast_complete', { caster: entity, skill })
   }
 

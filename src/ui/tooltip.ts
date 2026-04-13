@@ -58,6 +58,7 @@ export function buildSkillTooltip(skill: {
   castTime?: number
   cooldown?: number
   range?: number
+  mpCost?: number
   targetType?: string
   gcd?: boolean
   requiresTarget?: boolean
@@ -78,6 +79,7 @@ export function buildSkillTooltip(skill: {
   // Cast / CD / Range
   const stats: string[] = []
   if (skill.castTime && skill.castTime > 0) stats.push(`咏唱 ${(skill.castTime / 1000).toFixed(1)}s`)
+  if (skill.mpCost && skill.mpCost > 0) stats.push(`<span style="color:#4488cc">MP ${skill.mpCost}</span>`)
   if (skill.cooldown && skill.cooldown > 0) stats.push(`CD ${(skill.cooldown / 1000).toFixed(0)}s`)
   if (skill.range && skill.range > 0) stats.push(`距离 ${skill.range}m`)
   if (skill.requiresTarget) stats.push('需要目标')
