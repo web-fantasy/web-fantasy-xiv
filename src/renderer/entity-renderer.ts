@@ -130,22 +130,32 @@ export class EntityRenderer {
   }
 
   /** Call each render frame to sync positions */
-  updateAll(entities: Entity[]): void {
+  updateAll(entities: Entity[], lockedTargetId?: string | null): void {
     for (const entity of entities) {
       const group = this.meshes.get(entity.id)
       if (!group) continue
 
-      // Position: game x,y → Babylon x,z
       group.root.position.set(entity.position.x, 0, entity.position.y)
-
-      // Facing: game degrees (0=north/+y, clockwise) → Babylon rotation.y
-      // Babylon Y rotation: 0=+z, clockwise when viewed from above
-      // Game: 0=+y(north)=+z(babylon), so direct mapping in radians
       group.root.rotation.y = (entity.facing * Math.PI) / 180
 
       // Hide aggro fan once in combat
       if (group.aggroFan) {
         group.aggroFan.isVisible = !entity.inCombat
+      }
+
+      // Highlight locked target's range ring (thicker + brighter)
+      if (group.rangeRing) {
+        const isLocked = entity.id === lockedTargetId
+        const mat = group.rangeRing.material as StandardMaterial
+        if (isLocked) {
+          group.rangeRing.scaling.set(1, 3, 1) // Y scale = visually thicker torus
+          mat.alpha = 0.7
+          mat.emissiveColor.set(0.8, 0.2, 0.1)
+        } else {
+          group.rangeRing.scaling.set(1, 1, 1)
+          mat.alpha = 0.3
+          mat.emissiveColor = this.getColor(entity.type).scale(0.15)
+        }
       }
     }
   }
