@@ -9,6 +9,7 @@ import type { EventBus } from '@/core/event-bus'
 import type { SkillDef } from '@/core/types'
 import type { Arena } from '@/arena/arena'
 import { computeMoveDirection, computeFacingAngle } from '@/input/input-manager'
+import { calcDash, calcBackstep } from '@/combat/displacement'
 
 export function applyMovement(entity: Entity, direction: Vec2, dt: number): void {
   if (direction.x === 0 && direction.y === 0) return
@@ -29,6 +30,7 @@ export class PlayerController {
     private arena: Arena,
     private autoAttackInterval: number,
     private autoAttackSkill?: SkillDef,
+    private extraSkills: Map<number, SkillDef> = new Map(),
   ) {}
 
   /** Returns 'pause' if ESC should trigger pause menu (no higher-priority action consumed it) */
@@ -88,21 +90,30 @@ export class PlayerController {
       }
     }
 
-    // Skill keys 1-4
+    // Skill keys (1-6 = skill bar, 100+ = extra keys like Q/E)
     const skillIdx = this.input.consumeSkillPress()
-    if (skillIdx !== null && skillIdx < this.skills.length) {
-      // Auto-lock nearest enemy if no target
-      if (!this.player.target) {
-        const nearest = this.entityMgr.findNearest(
-          this.player.id,
-          (e) => e.type !== 'player' && e.type !== 'object' && e.alive,
-        )
-        if (nearest) {
-          this.player.target = nearest.id
-          this.bus.emit('target:locked', { entity: this.player, target: nearest })
+    if (skillIdx !== null) {
+      const skill = skillIdx < this.skills.length
+        ? this.skills[skillIdx]
+        : this.extraSkills.get(skillIdx) ?? null
+
+      if (skill) {
+        // Auto-lock nearest enemy if no target and skill requires one
+        if (skill.requiresTarget && !this.player.target) {
+          const nearest = this.entityMgr.findNearest(
+            this.player.id,
+            (e) => e.type !== 'player' && e.type !== 'object' && e.alive,
+          )
+          if (nearest) {
+            this.player.target = nearest.id
+            this.bus.emit('target:locked', { entity: this.player, target: nearest })
+          }
+        }
+
+        if (this.skillResolver.tryUse(this.player, skill)) {
+          this.applyDisplacementEffects(skill)
         }
       }
-      this.skillResolver.tryUse(this.player, this.skills[skillIdx])
     }
 
     // Auto-attack when target locked (uses dedicated auto-attack skill, no GCD)
@@ -120,5 +131,33 @@ export class PlayerController {
     this.buffSystem.update(this.player, dt)
 
     return null
+  }
+
+  private applyDisplacementEffects(skill: SkillDef): void {
+    if (!skill.effects) return
+    const target = this.player.target ? this.entityMgr.get(this.player.target) : null
+
+    for (const effect of skill.effects) {
+      if (effect.type === 'dash' && target) {
+        const newPos = calcDash(
+          { x: this.player.position.x, y: this.player.position.y },
+          { x: target.position.x, y: target.position.y },
+        )
+        const clamped = this.arena.clampPosition(newPos)
+        this.player.position.x = clamped.x
+        this.player.position.y = clamped.y
+      }
+
+      if (effect.type === 'backstep' && target) {
+        const newPos = calcBackstep(
+          { x: this.player.position.x, y: this.player.position.y },
+          { x: target.position.x, y: target.position.y },
+          effect.distance,
+        )
+        const clamped = this.arena.clampPosition(newPos)
+        this.player.position.x = clamped.x
+        this.player.position.y = clamped.y
+      }
+    }
   }
 }

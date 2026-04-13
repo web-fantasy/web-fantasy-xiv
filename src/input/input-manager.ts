@@ -75,6 +75,8 @@ export class InputManager {
         case 'Digit4': this.pendingSkill = 3; break
         case 'Digit5': this.pendingSkill = 4; break
         case 'Digit6': this.pendingSkill = 5; break
+        case 'KeyQ': this.pendingSkill = 100; break  // special: dash
+        case 'KeyE': this.pendingSkill = 101; break  // special: backstep
         case 'Escape': this.escPressed = true; break
       }
     })

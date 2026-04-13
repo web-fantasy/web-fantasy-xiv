@@ -17,7 +17,7 @@ import { UIManager } from '@/ui/ui-manager'
 import { PauseMenu } from '@/ui/pause-menu'
 import { DevTerminal } from '@/devtools/dev-terminal'
 import { CommandRegistry } from '@/devtools/commands'
-import { DEMO_SKILLS, AUTO_ATTACK } from './demo-skills'
+import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import type { ArenaDef, SkillDef } from '@/core/types'
 import type { Entity } from '@/entity/entity'
 
@@ -91,6 +91,7 @@ export function startDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement): vo
     arena,
     3000,
     AUTO_ATTACK,
+    new Map([[100, SKILL_DASH], [101, SKILL_BACKSTEP]]),
   )
 
   // --- UI ---

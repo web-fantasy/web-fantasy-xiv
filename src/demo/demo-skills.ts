@@ -118,3 +118,31 @@ export const DEMO_SKILLS: SkillDef[] = [
     effects: [{ type: 'damage', potency: 10 }],
   },
 ]
+
+/** Q key: dash to target (15m range, needs target) */
+export const SKILL_DASH: SkillDef = {
+  id: 'dash',
+  name: '突进',
+  type: 'ability',
+  castTime: 0,
+  cooldown: 10000,
+  gcd: false,
+  targetType: 'single',
+  requiresTarget: true,
+  range: 15,
+  effects: [{ type: 'dash' }],
+}
+
+/** E key: backstep away from target (5m range, 10m jump, needs target) */
+export const SKILL_BACKSTEP: SkillDef = {
+  id: 'backstep',
+  name: '后跳',
+  type: 'ability',
+  castTime: 0,
+  cooldown: 10000,
+  gcd: false,
+  targetType: 'single',
+  requiresTarget: true,
+  range: 5,
+  effects: [{ type: 'backstep', distance: 10 }],
+}
