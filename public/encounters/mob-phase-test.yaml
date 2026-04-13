@@ -64,6 +64,7 @@ player:
   speed: 5
   size: 0.5
   autoAttackRange: 5
+  position: { x: 0, y: -12, z: 0 }
 
 boss_ai:
   chaseRange: 5
