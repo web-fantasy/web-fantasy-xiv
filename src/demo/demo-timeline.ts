@@ -56,19 +56,20 @@ function dmgZone(
 
 // ========== SKILLS ==========
 
-// Phase 1: 扇形連斩 — one 12s cast, 4 zones staggered at 3s intervals
-// Cast bar shows "扇形連斩" for full 12s. Each fan shows telegraph 3s before resolve.
-const FAN_COMBO: SkillDef = {
-  id: 'fan_combo', name: '扇形連斩', type: 'spell',
-  castTime: 12000, cooldown: 0, gcd: false,
-  targetType: 'aoe', requiresTarget: false, range: 0,
-  zones: [
-    dmgZone({ type: 'fixed', angle: 180 }, { type: 'fan', radius: 12, angle: 90 }, 3000),   // south @ 3s
-    dmgZone({ type: 'fixed', angle: 270 }, { type: 'fan', radius: 12, angle: 90 }, 6000),   // west @ 6s
-    dmgZone({ type: 'fixed', angle: 0 },   { type: 'fan', radius: 12, angle: 90 }, 9000),   // north @ 9s
-    dmgZone({ type: 'fixed', angle: 90 },  { type: 'fan', radius: 12, angle: 90 }, 12000),  // east @ 12s
-  ],
+// Phase 1: 4 individual 3s fan spells, each with its own cast bar
+// Frame alignment tolerance in SkillResolver.tryUse handles the 1-tick desync
+function makeFan(id: string, name: string, angle: number): SkillDef {
+  return {
+    id, name, type: 'spell',
+    castTime: 3000, cooldown: 0, gcd: false,
+    targetType: 'aoe', requiresTarget: false, range: 0,
+    zones: [dmgZone({ type: 'fixed', angle }, { type: 'fan', radius: 12, angle: 90 }, 3000)],
+  }
 }
+const FAN_S = makeFan('fan_s', '扇形斬・前', 180)
+const FAN_W = makeFan('fan_w', '扇形斬・右', 270)
+const FAN_N = makeFan('fan_n', '扇形斬・後', 0)
+const FAN_E = makeFan('fan_e', '扇形斬・左', 90)
 
 // Phase 2: 左右開弓 — 5s cast (matches left resolve), right resolves 2s later
 const LR_CLEAVE: SkillDef = {
@@ -92,7 +93,7 @@ const PULL_CAST: SkillDef = {
     anchor: { type: 'caster' }, direction: { type: 'none' },
     shape: { type: 'circle', radius: 20 },
     resolveDelay: 5000, hitEffectDuration: 500,
-    effects: [{ type: 'damage', potency: 2000 }, { type: 'pull', distance: 6, source: { type: 'caster' } }],
+    effects: [{ type: 'damage', potency: 2000 }, { type: 'pull', distance: 99, source: { type: 'caster' } }],
     displacementHint: 'pull',
   }],
 }
@@ -184,11 +185,14 @@ const BOSS_AUTO: SkillDef = {
 
 // ========== TIMELINE ==========
 const TIMELINE: TimelineAction[] = [
-  // Phase 1 (2s): 扇形連斩 — 12s cast, 4 fans staggered
-  { at: 2000, action: 'use', use: 'fan_combo' },
+  // Phase 1 (2-14s): 4 independent fan casts, back-to-back
+  { at: 2000, action: 'use', use: 'fan_s' },
+  { at: 5000, action: 'use', use: 'fan_w' },
+  { at: 8000, action: 'use', use: 'fan_n' },
+  { at: 11000, action: 'use', use: 'fan_e' },
 
   // Phase 2 (16s): 左右開弓 — 5s cast, left@21s right@23s
-  // 2s gap after fan combo ends at 14s
+  // 2s gap after last fan resolves at 14s
   { at: 16000, action: 'use', use: 'lr_cleave' },
 
   // Phase 3 (25s): 引力漩渦 — 5s pull
@@ -237,7 +241,7 @@ export function startTimelineDemo(canvas: HTMLCanvasElement, uiRoot: HTMLDivElem
 
   const skillMap = new Map<string, SkillDef>()
   for (const s of [
-    FAN_COMBO, LR_CLEAVE, PULL_CAST, PULL_INSTANT,
+    FAN_S, FAN_W, FAN_N, FAN_E, LR_CLEAVE, PULL_CAST, PULL_INSTANT,
     IRON_LUNAR, CROSS_CUT, BOSS_FRONT, ENRAGE, BOSS_AUTO,
   ]) {
     skillMap.set(s.id, s)

@@ -39,8 +39,16 @@ export class SkillResolver {
     // Stunned: block everything
     if (this.buffSystem.isStunned(caster)) return false
 
-    // Casting: block everything
-    if (caster.casting) return false
+    // Casting: block if still casting, but force-complete if within 1 logic tick
+    // This handles frame alignment desync (e.g. 3000ms cast needs 188×16=3008ms)
+    if (caster.casting) {
+      const remaining = caster.casting.castTime - caster.casting.elapsed
+      if (remaining <= 20) {
+        this.completeCast(caster)
+      } else {
+        return false
+      }
+    }
 
     // Silence blocks weaponskills and spells
     if (skill.type !== 'ability' && this.buffSystem.isSilenced(caster)) return false
