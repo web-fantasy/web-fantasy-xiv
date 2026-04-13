@@ -170,9 +170,9 @@ export class EntityRenderer {
 
   private getColor(type: string): Color3 {
     switch (type) {
-      case 'player': return new Color3(0.4, 0.85, 0.4)    // light green
-      case 'boss': return new Color3(0.4, 0.7, 0.95)      // light blue
-      case 'mob': return new Color3(0.4, 0.7, 0.95)       // light blue (same as boss)
+      case 'player': return new Color3(0.4, 0.85, 0.4)    // green
+      case 'boss': return new Color3(0.85, 0.25, 0.2)     // red
+      case 'mob': return new Color3(0.85, 0.25, 0.2)      // red (same as boss)
       default: return new Color3(0.5, 0.5, 0.5)           // gray
     }
   }

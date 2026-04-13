@@ -4,6 +4,7 @@ import {
   type Scene, type Mesh,
 } from '@babylonjs/core'
 import type { EventBus } from '@/core/event-bus'
+import type { EntityManager } from '@/entity/entity-manager'
 import type { ActiveAoeZone } from '@/skill/aoe-zone'
 
 interface AoeMesh {
@@ -11,33 +12,54 @@ interface AoeMesh {
   zone: ActiveAoeZone
   phase: 'telegraph' | 'resolve'
   waveRing?: Mesh
+  isPlayerZone: boolean
 }
 
 export class AoeRenderer {
   private meshes = new Map<string, AoeMesh>()
-  private telegraphMat: StandardMaterial
-  private telegraphKbMat: StandardMaterial
-  private resolveMat: StandardMaterial
-  private edgeColor: Color4
 
-  constructor(private scene: Scene, bus: EventBus) {
-    this.telegraphMat = new StandardMaterial('aoe-telegraph', scene)
-    this.telegraphMat.diffuseColor = new Color3(0.95, 0.45, 0.0)
-    this.telegraphMat.emissiveColor = new Color3(0.5, 0.2, 0.0)
-    this.telegraphMat.alpha = 0.3
+  // Enemy (orange)
+  private enemyTelegraphMat: StandardMaterial
+  private enemyKbMat: StandardMaterial
+  private enemyResolveMat: StandardMaterial
+  private enemyEdgeColor: Color4
 
-    this.telegraphKbMat = new StandardMaterial('aoe-telegraph-kb', scene)
-    this.telegraphKbMat.diffuseColor = new Color3(0.95, 0.5, 0.05)
-    this.telegraphKbMat.emissiveColor = new Color3(0.4, 0.15, 0.0)
-    this.telegraphKbMat.alpha = 0.15
+  // Player (blue)
+  private playerTelegraphMat: StandardMaterial
+  private playerResolveMat: StandardMaterial
+  private playerEdgeColor: Color4
 
-    this.resolveMat = new StandardMaterial('aoe-resolve', scene)
-    this.resolveMat.diffuseColor = new Color3(1.0, 0.0, 0.0)
-    this.resolveMat.emissiveColor = new Color3(0.8, 0.0, 0.0)
-    this.resolveMat.alpha = 0.5
+  constructor(private scene: Scene, bus: EventBus, private entityMgr: EntityManager) {
+    // Enemy telegraph: orange
+    this.enemyTelegraphMat = new StandardMaterial('aoe-enemy-tel', scene)
+    this.enemyTelegraphMat.diffuseColor = new Color3(0.95, 0.45, 0.0)
+    this.enemyTelegraphMat.emissiveColor = new Color3(0.5, 0.2, 0.0)
+    this.enemyTelegraphMat.alpha = 0.3
 
-    // Edge rendering color for telegraph outlines
-    this.edgeColor = new Color4(0.95, 0.4, 0.0, 0.7)
+    this.enemyKbMat = new StandardMaterial('aoe-enemy-kb', scene)
+    this.enemyKbMat.diffuseColor = new Color3(0.95, 0.5, 0.05)
+    this.enemyKbMat.emissiveColor = new Color3(0.4, 0.15, 0.0)
+    this.enemyKbMat.alpha = 0.15
+
+    this.enemyResolveMat = new StandardMaterial('aoe-enemy-resolve', scene)
+    this.enemyResolveMat.diffuseColor = new Color3(1.0, 0.0, 0.0)
+    this.enemyResolveMat.emissiveColor = new Color3(0.8, 0.0, 0.0)
+    this.enemyResolveMat.alpha = 0.5
+
+    this.enemyEdgeColor = new Color4(0.95, 0.4, 0.0, 0.7)
+
+    // Player telegraph: blue
+    this.playerTelegraphMat = new StandardMaterial('aoe-player-tel', scene)
+    this.playerTelegraphMat.diffuseColor = new Color3(0.2, 0.5, 0.95)
+    this.playerTelegraphMat.emissiveColor = new Color3(0.1, 0.25, 0.5)
+    this.playerTelegraphMat.alpha = 0.3
+
+    this.playerResolveMat = new StandardMaterial('aoe-player-resolve', scene)
+    this.playerResolveMat.diffuseColor = new Color3(0.3, 0.5, 1.0)
+    this.playerResolveMat.emissiveColor = new Color3(0.2, 0.3, 0.8)
+    this.playerResolveMat.alpha = 0.5
+
+    this.playerEdgeColor = new Color4(0.3, 0.5, 1.0, 0.7)
 
     bus.on('aoe:zone_created', (payload: { zone: ActiveAoeZone }) => {
       this.createMesh(payload.zone)
@@ -47,7 +69,7 @@ export class AoeRenderer {
       const entry = this.meshes.get(payload.zone.id)
       if (entry) {
         entry.phase = 'resolve'
-        entry.mesh.material = this.resolveMat
+        entry.mesh.material = entry.isPlayerZone ? this.playerResolveMat : this.enemyResolveMat
         entry.mesh.disableEdgesRendering()
         if (entry.waveRing) {
           entry.waveRing.dispose()
@@ -63,43 +85,27 @@ export class AoeRenderer {
 
   update(time: number): void {
     const pulse = 0.2 + Math.sin(time * 0.005) * 0.1
-    this.telegraphMat.alpha = pulse
-    this.telegraphKbMat.alpha = pulse * 0.5
+    this.enemyTelegraphMat.alpha = pulse
+    this.enemyKbMat.alpha = pulse * 0.5
+    this.playerTelegraphMat.alpha = pulse
+  }
 
-    // Animate displacement wave rings
-    for (const entry of this.meshes.values()) {
-      if (!entry.waveRing || entry.phase !== 'telegraph') continue
-
-      const hint = entry.zone.def.displacementHint
-      if (!hint) continue
-
-      const shape = entry.zone.def.shape
-      let maxRadius = 0
-      if (shape.type === 'circle') maxRadius = shape.radius
-      else if (shape.type === 'ring') maxRadius = shape.outerRadius
-      else continue
-
-      // Wave cycle: 0→1 repeating over ~1.5s
-      const cycle = (time * 0.0007) % 1
-
-      if (hint === 'knockback') {
-        // Expand outward: small → large
-        const scale = 0.2 + cycle * 0.8
-        entry.waveRing.scaling.set(scale, 1, scale)
-        ;(entry.waveRing.material as StandardMaterial).alpha = (1 - cycle) * 0.3
-      } else {
-        // Contract inward: large → small
-        const scale = 1.0 - cycle * 0.8
-        entry.waveRing.scaling.set(scale, 1, scale)
-        ;(entry.waveRing.material as StandardMaterial).alpha = cycle * 0.3
-      }
-    }
+  private isPlayerCaster(zone: ActiveAoeZone): boolean {
+    if (!zone.casterId) return false
+    const entity = this.entityMgr.get(zone.casterId)
+    return entity?.type === 'player'
   }
 
   private createMesh(zone: ActiveAoeZone): void {
     const { shape } = zone.def
+    const isPlayer = this.isPlayerCaster(zone)
     const hasDisplacement = !!zone.def.displacementHint
     let mesh: Mesh
+
+    const telegraphMat = isPlayer
+      ? this.playerTelegraphMat
+      : (hasDisplacement ? this.enemyKbMat : this.enemyTelegraphMat)
+    const edgeColor = isPlayer ? this.playerEdgeColor : this.enemyEdgeColor
 
     switch (shape.type) {
       case 'circle':
@@ -122,12 +128,12 @@ export class AoeRenderer {
           tessellation: 48,
         }, this.scene)
         mesh.position.y = 0.02
-        mesh.material = hasDisplacement ? this.telegraphKbMat : this.telegraphMat
+        mesh.material = telegraphMat
         mesh.enableEdgesRendering()
         mesh.edgesWidth = 2.0
-        mesh.edgesColor = this.edgeColor
+        mesh.edgesColor = edgeColor
         const waveRing = hasDisplacement ? this.createWaveRing(zone) : undefined
-        this.meshes.set(zone.id, { mesh, zone, phase: 'telegraph', waveRing })
+        this.meshes.set(zone.id, { mesh, zone, phase: 'telegraph', waveRing, isPlayerZone: isPlayer })
         return
 
       case 'rect':
@@ -157,18 +163,15 @@ export class AoeRenderer {
       mesh.rotation.y = (zone.facing * Math.PI) / 180
     }
 
-    mesh.material = hasDisplacement ? this.telegraphKbMat : this.telegraphMat
-
-    // Edge outline for telegraph boundary
+    mesh.material = telegraphMat
     mesh.enableEdgesRendering()
     mesh.edgesWidth = 2.0
-    mesh.edgesColor = this.edgeColor
+    mesh.edgesColor = edgeColor
 
     const waveRing = hasDisplacement ? this.createWaveRing(zone) : undefined
-    this.meshes.set(zone.id, { mesh, zone, phase: 'telegraph', waveRing })
+    this.meshes.set(zone.id, { mesh, zone, phase: 'telegraph', waveRing, isPlayerZone: isPlayer })
   }
 
-  /** Create a torus ring that scales in/out to indicate displacement direction */
   private createWaveRing(zone: ActiveAoeZone): Mesh {
     const shape = zone.def.shape
     let radius = 0
