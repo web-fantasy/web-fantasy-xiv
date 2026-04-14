@@ -79,10 +79,13 @@ export class DisplacementAnimator {
       const y = anim.fromY + (anim.toY - anim.fromY) * eased
 
       const clamped = this.arena.clampPosition({ x, y })
-      anim.entity.position.x = clamped.x
-      anim.entity.position.y = clamped.y
+      const final = this.arena.clampToWallZones(clamped)
+      anim.entity.position.x = final.x
+      anim.entity.position.y = final.y
 
-      if (t >= 1) {
+      // Stop early if wall zone blocked movement
+      const hitWall = final.x !== clamped.x || final.y !== clamped.y
+      if (t >= 1 || hitWall) {
         this.animations.splice(i, 1)
       }
     }

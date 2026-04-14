@@ -48,8 +48,27 @@ export class ArenaRenderer {
     // Remove existing mesh with same id
     this.removeDeathZoneMesh(id)
 
+    const isWall = behavior === 'wall'
     let mesh: Mesh
     const facingRad = (facing * Math.PI) / 180
+
+    if (isWall && shape.type === 'rect') {
+      // Wall zones: 3D box with height
+      const wallHeight = 1.5
+      mesh = MeshBuilder.CreateBox(`deathzone-${id}`, {
+        width: shape.width,
+        height: wallHeight,
+        depth: shape.length,
+      }, this.scene)
+      mesh.rotation.y = (facing * Math.PI) / 180
+      // Position at rect's visual center (offset from start along facing by half-length)
+      const offsetX = Math.sin(facingRad) * (shape.length / 2)
+      const offsetZ = Math.cos(facingRad) * (shape.length / 2)
+      mesh.position.set(center.x + offsetX, wallHeight / 2, center.y + offsetZ)
+      mesh.material = this.wallMat
+      this.deathZoneMeshes.set(id, mesh)
+      return
+    }
 
     switch (shape.type) {
       case 'circle':
@@ -87,7 +106,7 @@ export class ArenaRenderer {
     } else {
       mesh.position.set(center.x, 0.02, center.y)
     }
-    mesh.material = behavior === 'wall' ? this.wallMat : this.dzMat
+    mesh.material = isWall ? this.wallMat : this.dzMat
     this.deathZoneMeshes.set(id, mesh)
   }
 

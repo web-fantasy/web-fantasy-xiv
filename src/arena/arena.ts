@@ -3,7 +3,13 @@ import type { ArenaDef, DeathZoneDef, Vec2 } from '@/core/types'
 import { isPointInAoeShape } from '@/skill/aoe-shape'
 
 export class Arena {
+  private wallZoneProvider: () => DeathZoneDef[] = () => []
+
   constructor(readonly def: ArenaDef) {}
+
+  setWallZoneProvider(fn: () => DeathZoneDef[]): void {
+    this.wallZoneProvider = fn
+  }
 
   isInBounds(point: Vec2): boolean {
     const { shape } = this.def
@@ -33,39 +39,72 @@ export class Arena {
 
   /**
    * Push a point out of any wall zone it's inside.
-   * Uses push-out along vector from zone center to point.
+   * Per-shape push-out to nearest edge.
    */
-  clampToWallZones(point: Vec2, wallZones: DeathZoneDef[]): Vec2 {
+  clampToWallZones(point: Vec2, wallZones?: DeathZoneDef[]): Vec2 {
+    const zones = wallZones ?? this.wallZoneProvider()
     let result = { ...point }
-    for (const zone of wallZones) {
+    for (const zone of zones) {
       if (!isPointInAoeShape(result, zone.center, zone.shape, zone.facing)) continue
-
-      const dx = result.x - zone.center.x
-      const dy = result.y - zone.center.y
-      const dist = Math.sqrt(dx * dx + dy * dy)
-
-      if (dist < 0.001) {
-        // Point is exactly at center — push in arbitrary direction
-        result = { x: zone.center.x, y: zone.center.y + this.getZoneRadius(zone) + 0.1 }
-        continue
-      }
-
-      const nx = dx / dist
-      const ny = dy / dist
-      const pushDist = this.getZoneRadius(zone) + 0.1
-      result = { x: zone.center.x + nx * pushDist, y: zone.center.y + ny * pushDist }
+      result = this.pushOutOfZone(result, zone)
     }
     return result
   }
 
-  /** Approximate radius for push-out distance */
-  private getZoneRadius(zone: DeathZoneDef): number {
-    switch (zone.shape.type) {
-      case 'circle': return zone.shape.radius
-      case 'fan': return zone.shape.radius
-      case 'ring': return zone.shape.outerRadius
-      case 'rect': return Math.max(zone.shape.length, zone.shape.width) / 2
+  private pushOutOfZone(point: Vec2, zone: DeathZoneDef): Vec2 {
+    const { shape, center, facing } = zone
+
+    if (shape.type === 'circle') {
+      const dx = point.x - center.x
+      const dy = point.y - center.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+      if (dist < 0.001) return { x: center.x, y: center.y + shape.radius + 0.05 }
+      const scale = (shape.radius + 0.05) / dist
+      return { x: center.x + dx * scale, y: center.y + dy * scale }
     }
+
+    if (shape.type === 'rect') {
+      // Transform to local coords (same as pointInRect in geometry.ts)
+      const rad = facing * Math.PI / 180
+      const sin = Math.sin(rad)
+      const cos = Math.cos(rad)
+      const dx = point.x - center.x
+      const dy = point.y - center.y
+      const localX = dx * cos - dy * sin   // perpendicular to facing
+      const localY = dx * sin + dy * cos   // along facing (0..length)
+
+      const hw = shape.width / 2
+      // Distances to each edge
+      const dLeft = localX + hw        // distance to localX = -hw
+      const dRight = hw - localX       // distance to localX = +hw
+      const dBottom = localY            // distance to localY = 0
+      const dTop = shape.length - localY // distance to localY = length
+
+      const minDist = Math.min(dLeft, dRight, dBottom, dTop)
+      let outX = localX
+      let outY = localY
+      const EPS = 0.05
+
+      if (minDist === dLeft)       outX = -hw - EPS
+      else if (minDist === dRight) outX = hw + EPS
+      else if (minDist === dBottom) outY = -EPS
+      else                         outY = shape.length + EPS
+
+      // Transform back to world coords
+      return {
+        x: center.x + outX * cos + outY * sin,
+        y: center.y - outX * sin + outY * cos,
+      }
+    }
+
+    // Fallback for fan/ring: push from center
+    const dx = point.x - center.x
+    const dy = point.y - center.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    const r = shape.type === 'ring' ? shape.outerRadius : (shape as any).radius ?? 1
+    if (dist < 0.001) return { x: center.x, y: center.y + r + 0.05 }
+    const scale = (r + 0.05) / dist
+    return { x: center.x + dx * scale, y: center.y + dy * scale }
   }
 
   clampPosition(point: Vec2): Vec2 {

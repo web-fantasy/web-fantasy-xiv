@@ -92,6 +92,7 @@ export class CombatResolver {
           this.applyDisplacement(caster, calcDash(
             { x: caster.position.x, y: caster.position.y },
             { x: target.position.x, y: target.position.y },
+            caster.autoAttackRange,
           ))
           break
 
@@ -144,7 +145,7 @@ export class CombatResolver {
   }
 
   private applyDisplacement(entity: Entity, newPos: { x: number; y: number }): void {
-    const clamped = this.arena.clampPosition(newPos)
+    const clamped = this.arena.clampToWallZones(this.arena.clampPosition(newPos))
 
     // Forced movement interrupts casting + cancels zones
     if (entity.casting) {
