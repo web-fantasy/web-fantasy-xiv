@@ -108,15 +108,20 @@ export class SceneManager {
 
   /** Project world position to screen pixel coordinates */
   worldToScreen(x: number, y: number, heightOffset = 0): { x: number; y: number } | null {
-    const worldPos = new Vector3(x, heightOffset, y) // game Y → Babylon Z
-    const viewProjection = this.scene.getTransformMatrix()
-    const viewport = this.camera.viewport.toGlobal(
-      this.engine.getRenderWidth(),
-      this.engine.getRenderHeight(),
-    )
-    const projected = Vector3.Project(worldPos, Matrix.Identity(), viewProjection, viewport)
-    if (projected.z < 0 || projected.z > 1) return null
-    return { x: projected.x, y: projected.y }
+    try {
+      const worldPos = new Vector3(x, heightOffset, y)
+      const viewProjection = this.scene.getTransformMatrix()
+      if (!viewProjection) return null
+      const viewport = this.camera.viewport.toGlobal(
+        this.engine.getRenderWidth(),
+        this.engine.getRenderHeight(),
+      )
+      const projected = Vector3.Project(worldPos, Matrix.Identity(), viewProjection, viewport)
+      if (projected.z < 0 || projected.z > 1) return null
+      return { x: projected.x, y: projected.y }
+    } catch {
+      return null
+    }
   }
 
   dispose(): void {
