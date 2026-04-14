@@ -78,7 +78,7 @@ export class GameScene {
   battleOver = false
   player!: Entity
   private lastTime = performance.now()
-  private config: GameSceneConfig
+  readonly config: GameSceneConfig
 
   /** Recent damage taken by player (for death recap) */
   private damageLog: { time: number; sourceName: string; skillName: string; amount: number; hpAfter: number; mitigation: number }[] = []
@@ -125,7 +125,10 @@ export class GameScene {
     // Pause menu
     this.pauseMenu.onResumeGame(() => { this.paused = false; this.pauseMenu.hide() })
     this.pauseMenu.onRetryGame(() => config.restart())
-    this.pauseMenu.onQuitGame(() => window.location.reload())
+    this.pauseMenu.onQuitGame(() => {
+      window.history.pushState(null, '', '/')
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
 
     // Resize
     // Track damage taken by player for death recap

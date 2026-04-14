@@ -14,6 +14,15 @@ import type { EncounterData } from '@/game/encounter-loader'
 
 let scene: GameScene | null = null
 
+export function disposeActiveScene(): void {
+  scene?.dispose()
+  scene = null
+}
+
+export function getActiveScene(): GameScene | null {
+  return scene
+}
+
 export async function startTimelineDemo(
   canvas: HTMLCanvasElement,
   uiRoot: HTMLDivElement,
