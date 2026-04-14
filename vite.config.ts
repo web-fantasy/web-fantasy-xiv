@@ -1,10 +1,10 @@
 import { defineConfig } from 'vite'
-import { resolve } from 'path'
+import { resolve } from 'node:path'
 import preact from '@preact/preset-vite'
 import UnoCSS from 'unocss/vite'
 
 export default defineConfig({
-  base: './',
+  // base: './',
   plugins: [preact(), UnoCSS()],
   resolve: {
     alias: {
