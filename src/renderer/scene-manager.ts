@@ -1,4 +1,4 @@
-import { Engine, Scene, ArcRotateCamera, HemisphericLight, DirectionalLight, Vector3, Matrix, Plane } from '@babylonjs/core'
+import { Engine, Scene, ArcRotateCamera, HemisphericLight, DirectionalLight, Vector3, Matrix, Quaternion, Plane } from '@babylonjs/core'
 
 export class SceneManager {
   readonly engine: Engine
@@ -37,6 +37,7 @@ export class SceneManager {
     sun.intensity = 0.6
 
     this.canvas = canvas
+    this.setupRollModifier()
   }
 
   /** Set camera target directly (used by CameraController) */
@@ -50,6 +51,7 @@ export class SceneManager {
    * Positive = clockwise, negative = counter-clockwise.
    */
   rollCamera(angleDeg: number, snapMs = 150, returnMs = 1500): void {
+    this.canvas.style.transform = '' // clear any CSS leftover
     this.rollTarget = angleDeg
     this.rollSnapSpeed = Math.abs(angleDeg) / Math.max(snapMs, 1)
     this.rollReturnSpeed = Math.abs(angleDeg) / Math.max(returnMs, 1)
@@ -78,10 +80,23 @@ export class SceneManager {
       }
     }
 
-    // Apply as CSS transform — no Babylon matrix issues
-    this.canvas.style.transform = this.rollAngle !== 0
-      ? `rotate(${this.rollAngle}deg)`
-      : ''
+    // Applied via getViewMatrix override — see constructor
+  }
+
+  private setupRollModifier(): void {
+    // Override the camera's view matrix to inject roll rotation
+    const originalGetViewMatrix = this.camera.getViewMatrix.bind(this.camera)
+    this.camera.getViewMatrix = () => {
+      const view = originalGetViewMatrix()
+      if (this.rollAngle === 0) return view
+
+      // Build a rotation around the camera's forward axis (Z in view space)
+      const rollRad = (this.rollAngle * Math.PI) / 180
+      const rollMatrix = Matrix.RotationZ(rollRad)
+
+      // Post-multiply: view × roll
+      return view.multiply(rollMatrix)
+    }
   }
 
   startRenderLoop(onBeforeRender: () => void): void {
