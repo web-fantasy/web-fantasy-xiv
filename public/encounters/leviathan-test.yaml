@@ -5,8 +5,8 @@
 arena:
   name: 甲板
   shape: rect
-  width: 9
-  height: 21
+  width: 21    # 船身长轴（左右）
+  height: 9    # 船身短轴（上下=port/starboard）
   boundary: lethal
 
 entities:
@@ -18,7 +18,7 @@ entities:
     speed: 0
     size: 1.5
     facing: 180
-    position: { x: 0, y: 5, z: 0 }
+    position: { x: 5, y: 0, z: 0 }
     autoAttackRange: 5
     aggroRange: 999
     visible: true
@@ -30,7 +30,7 @@ player:
   speed: 6
   size: 0.5
   autoAttackRange: 5
-  position: { x: 0, y: -5, z: 0 }
+  position: { x: -5, y: 0, z: 0 }
 
 boss_ai:
   chaseRange: 5
@@ -40,39 +40,39 @@ boss_ai:
   aggroAngle: 360
 
 local_skills:
-  # 左侧拍击：从右侧发射无预兆矩形击退，把玩家推向左边
+  # Left slap: boss on left(-X), knockback from right(+X) pushes LEFT
   slap_left:
-    name: 大力拍击・左
+    name: 大力拍击
     type: ability
     castTime: 0
     targetType: aoe
     requiresTarget: false
     range: 0
     zones:
-      - anchor: { type: position, x: 10, y: 0 }   # source on RIGHT side (off-map)
-        direction: { type: fixed, angle: 270 }       # pushes LEFT
-        shape: { type: rect, length: 30, width: 30 } # covers entire ship
+      - anchor: { type: position, x: 15, y: 0 }
+        direction: { type: fixed, angle: 270 }
+        shape: { type: rect, length: 30, width: 30 }
         resolveDelay: 0
         hitEffectDuration: 100
         effects:
-          - { type: knockback, distance: 6, source: { type: position, x: 10, y: 0 } }
+          - { type: knockback, distance: 7, source: { type: position, x: 15, y: 0 } }
 
-  # 右侧拍击：从左侧发射无预兆矩形击退，把玩家推向右边
+  # Right slap: boss on right(+X), knockback from left(-X) pushes RIGHT
   slap_right:
-    name: 大力拍击・右
+    name: 大力拍击
     type: ability
     castTime: 0
     targetType: aoe
     requiresTarget: false
     range: 0
     zones:
-      - anchor: { type: position, x: -10, y: 0 }
+      - anchor: { type: position, x: -15, y: 0 }
         direction: { type: fixed, angle: 90 }
         shape: { type: rect, length: 30, width: 30 }
         resolveDelay: 0
         hitEffectDuration: 100
         effects:
-          - { type: knockback, distance: 6, source: { type: position, x: -10, y: 0 } }
+          - { type: knockback, distance: 7, source: { type: position, x: -15, y: 0 } }
 
   # 咏唱用的假技能（给读条条看）
   cast_slap_left:
@@ -135,32 +135,32 @@ timeline:
     entity: boss
     value: false
 
-  # Boss appears briefly on the left edge
+  # Boss appears on left edge (-X)
   - at: 9500
     action: teleport
     entity: boss
-    position: { x: -7, y: 0 }
+    position: { x: -13, y: 0 }
   - at: 9500
     action: lock_facing
     entity: boss
-    facing: 90
+    facing: 90        # faces right (toward ship)
   - at: 9500
     action: set_visible
     entity: boss
     value: true
 
-  # Cast bar: "大力拍击"
+  # Cast bar
   - at: 10000
     use: cast_slap_left
     entity: boss
 
-  # At cast complete (13s): knockback from right + camera roll left
+  # Slap: knockback from right pushes LEFT + camera tilts CCW
   - at: 13000
     use: slap_left
     entity: boss
   - at: 13000
     action: camera_roll
-    angle: -15
+    angle: -12
     snapMs: 150
     returnMs: 2000
 
@@ -172,7 +172,7 @@ timeline:
   - at: 14500
     action: teleport
     entity: boss
-    position: { x: 0, y: 5 }
+    position: { x: 5, y: 0 }
   - at: 14500
     action: lock_facing
     entity: boss
@@ -188,9 +188,9 @@ timeline:
   - at: 15000
     action: enable_ai
 
-  # Phase 2: 追击 (15-23s)
+  # Phase 2: chase (15-23s)
 
-  # Phase 3: 第二次拍击 — 右侧 (23s)
+  # Phase 3: starboard slap (23s)
   - at: 23000
     action: disable_ai
   - at: 23000
@@ -202,14 +202,15 @@ timeline:
     entity: boss
     value: false
 
+  # Boss appears on right edge (+X)
   - at: 24500
     action: teleport
     entity: boss
-    position: { x: 7, y: 0 }
+    position: { x: 13, y: 0 }
   - at: 24500
     action: lock_facing
     entity: boss
-    facing: 270
+    facing: 270       # faces left (toward ship)
   - at: 24500
     action: set_visible
     entity: boss
@@ -219,13 +220,13 @@ timeline:
     use: cast_slap_right
     entity: boss
 
-  # Knockback from left + camera roll right
+  # Slap: knockback from left pushes RIGHT + camera tilts CW
   - at: 28000
     use: slap_right
     entity: boss
   - at: 28000
     action: camera_roll
-    angle: 15
+    angle: 12
     snapMs: 150
     returnMs: 2000
 
@@ -237,7 +238,7 @@ timeline:
   - at: 29500
     action: teleport
     entity: boss
-    position: { x: 0, y: 5 }
+    position: { x: 5, y: 0 }
   - at: 29500
     action: lock_facing
     entity: boss
@@ -253,13 +254,13 @@ timeline:
   - at: 30000
     action: enable_ai
 
-  # Enrage at 60s
+  # Enrage at 55s
   - at: 55000
     action: disable_ai
   - at: 55000
     action: teleport
     entity: boss
-    position: { x: 0, y: 5 }
+    position: { x: 5, y: 0 }
   - at: 55000
     action: lock_facing
     entity: boss
