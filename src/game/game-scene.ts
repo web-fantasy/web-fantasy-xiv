@@ -115,6 +115,7 @@ export class GameScene {
       this.player, this.input, this.skillResolver, this.buffSystem,
       this.entityMgr, this.bus, this.arena, this.config.playerInputConfig,
     )
+    this.playerDriver.setDisplacer(this.displacer)
     return this.player
   }
 

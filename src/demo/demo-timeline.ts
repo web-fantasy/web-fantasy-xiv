@@ -7,7 +7,7 @@ import { DeathZoneManager } from '@/arena/death-zone-manager'
 import { ScriptRunner } from '@/timeline/script-runner'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import { DEMO_BUFFS } from './demo-buffs'
-import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSignal, timelineEntries, dialogText, type TimelineEntry } from '@/ui/state'
+import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSignal, timelineEntries, dialogText, currentPhaseInfo, type TimelineEntry } from '@/ui/state'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
 import type { EncounterData } from '@/game/encounter-loader'
@@ -78,12 +78,15 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
 
   // Create all entities from encounter data
   const entityMap = new Map<string, Entity>()
+  entityMap.set('player', s.player)
   const aiMap = new Map<string, BossBehavior>()
   const aiEnabled = new Set<string>()
+  const knownGroups = new Set<string>()  // groups that have had at least one entity
 
   for (const [id, opts] of enc.entities) {
     const entity = s.entityMgr.create(opts)
     entityMap.set(id, entity)
+    knownGroups.add(entity.group)
 
     // Boss entity shortcut
     if (id === 'boss') s.bossEntity = entity
@@ -104,7 +107,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   const scheduler = new PhaseScheduler(s.bus, enc.phases)
   const deathZoneMgr = new DeathZoneManager(s.bus)
   if (enc.arena.deathZones) deathZoneMgr.loadInitial(enc.arena.deathZones)
-  s.playerDriver.setWallZoneProvider(() => deathZoneMgr.getWallZones())
+  s.arena.setWallZoneProvider(() => deathZoneMgr.getWallZones())
 
   const scriptRunner = new ScriptRunner({
     bus: s.bus,
@@ -175,6 +178,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
           facing: opts.facing ?? 180,
         })
         entityMap.set(id, entity)
+        knownGroups.add(entity.group)
         if (entity.type === 'mob' || entity.type === 'boss') {
           const ai = new BossBehavior(entity, {})
           ai.lockFacing(entity.facing)
@@ -357,6 +361,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
           facing: 180,
         })
         entityMap.set(id, entity)
+        knownGroups.add(entity.group)
         if (type === 'mob' || type === 'boss') {
           const ai = new BossBehavior(entity, {})
           ai.lockFacing(entity.facing)
@@ -383,6 +388,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     if (combatStarted) {
       scheduler.checkTriggers({
         allKilledInGroup: (group) => {
+          if (!knownGroups.has(group)) return false
           const alive = s.entityMgr.getAlive()
           return !alive.some((e) => e.group === group)
         },
@@ -504,4 +510,13 @@ function updateTimelineSignal(dt: number, scheduler: PhaseScheduler, skillMap: M
 
   upcoming.sort((a, b) => a.timeUntil - b.timeUntil)
   timelineEntries.value = upcoming.slice(0, TIMELINE_MAX_ENTRIES)
+
+  // Update current phase display
+  const latestPhase = scheduler.getLatestPhase()
+  if (latestPhase && latestPhase.total > 1) {
+    const label = latestPhase.name ?? `P${latestPhase.index}`
+    currentPhaseInfo.value = { label, showLabel: true }
+  } else {
+    currentPhaseInfo.value = null
+  }
 }

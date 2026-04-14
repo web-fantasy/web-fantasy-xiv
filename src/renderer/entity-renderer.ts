@@ -86,11 +86,14 @@ export class EntityRenderer {
     arrowMat.emissiveColor = color.scale(0.3)
     facingArrow.material = arrowMat
 
-    // Auto-attack range ring: thin torus at feet
+    // Target ring at feet: auto-attack range ring, or small indicator for targetable entities
     let rangeRing: any = null
-    if (entity.autoAttackRange > 0) {
+    const ringRadius = entity.autoAttackRange > 0
+      ? entity.autoAttackRange
+      : (entity.type !== 'player' ? entity.size + 0.3 : 0)
+    if (ringRadius > 0) {
       rangeRing = MeshBuilder.CreateTorus(`range-${entity.id}`, {
-        diameter: entity.autoAttackRange * 2,
+        diameter: ringRadius * 2,
         thickness: 0.12,
         tessellation: 48,
       }, this.scene)

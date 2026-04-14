@@ -1,11 +1,12 @@
 import type { Entity } from '@/entity/entity'
-import type { DeathZoneDef, SkillDef } from '@/core/types'
+import type { SkillDef } from '@/core/types'
 import type { InputManager } from '@/input/input-manager'
 import type { SkillResolver } from '@/skill/skill-resolver'
 import type { BuffSystem } from '@/combat/buff'
 import type { EntityManager } from '@/entity/entity-manager'
 import type { EventBus } from '@/core/event-bus'
 import type { Arena } from '@/arena/arena'
+import type { DisplacementAnimator } from './displacement-animator'
 import { computeMoveDirection, computeFacingAngle } from '@/input/input-manager'
 
 const SKILL_QUEUE_WINDOW = 500
@@ -29,12 +30,7 @@ export class PlayerInputDriver {
   private queuedSkill: SkillDef | null = null
   private regenTimer = 0
   private mpRegenTimer = 0
-  private getWallZones: () => DeathZoneDef[] = () => []
-
-  setWallZoneProvider(fn: () => DeathZoneDef[]): void {
-    this.getWallZones = fn
-  }
-
+  private displacer: DisplacementAnimator | null = null
   constructor(
     private entity: Entity,
     private input: InputManager,
@@ -45,6 +41,10 @@ export class PlayerInputDriver {
     private arena: Arena,
     private config: PlayerInputConfig,
   ) {}
+
+  setDisplacer(displacer: DisplacementAnimator): void {
+    this.displacer = displacer
+  }
 
   update(dt: number): 'pause' | null {
     const p = this.entity
@@ -60,6 +60,15 @@ export class PlayerInputDriver {
       } else {
         return 'pause'
       }
+    }
+
+    // During displacement animation: block all input, only tick regen/buffs/cooldowns
+    if (this.displacer?.isAnimating(p.id)) {
+      this.input.consumeSkillPress() // discard pending skill press
+      this.skillResolver.updateAll(dt)
+      this.buffSystem.update(p, dt)
+      this.tickRegen(p, dt)
+      return null
     }
 
     // Movement (blocked while stunned)
@@ -83,7 +92,7 @@ export class PlayerInputDriver {
         p.position.y += dir.y * distance
 
         const clamped = this.arena.clampPosition({ x: p.position.x, y: p.position.y })
-        const wallClamped = this.arena.clampToWallZones(clamped, this.getWallZones())
+        const wallClamped = this.arena.clampToWallZones(clamped)
         p.position.x = wallClamped.x
         p.position.y = wallClamped.y
 
@@ -142,27 +151,7 @@ export class PlayerInputDriver {
     this.skillResolver.updateAll(dt)
     this.buffSystem.update(p, dt)
 
-    // Passive HP regen
-    if (p.alive && p.hp < p.maxHp) {
-      this.regenTimer += dt
-      if (this.regenTimer >= REGEN_INTERVAL) {
-        this.regenTimer -= REGEN_INTERVAL
-        const rate = p.inCombat ? REGEN_RATE_COMBAT : REGEN_RATE_IDLE
-        const heal = Math.floor(p.maxHp * rate)
-        p.hp = Math.min(p.maxHp, p.hp + heal)
-      }
-    }
-
-    // Passive MP regen
-    if (p.alive && p.maxMp > 0 && p.mp < p.maxMp) {
-      this.mpRegenTimer += dt
-      const interval = p.inCombat ? MP_REGEN_INTERVAL : MP_REGEN_INTERVAL_IDLE
-      const amount = p.inCombat ? MP_REGEN_AMOUNT : MP_REGEN_AMOUNT_IDLE
-      if (this.mpRegenTimer >= interval) {
-        this.mpRegenTimer -= interval
-        p.mp = Math.min(p.maxMp, p.mp + amount)
-      }
-    }
+    this.tickRegen(p, dt)
 
     return null
   }
@@ -205,6 +194,27 @@ export class PlayerInputDriver {
     }
 
     return false
+  }
+
+  private tickRegen(p: Entity, dt: number): void {
+    if (p.alive && p.hp < p.maxHp) {
+      this.regenTimer += dt
+      if (this.regenTimer >= REGEN_INTERVAL) {
+        this.regenTimer -= REGEN_INTERVAL
+        const rate = p.inCombat ? REGEN_RATE_COMBAT : REGEN_RATE_IDLE
+        const heal = Math.floor(p.maxHp * rate)
+        p.hp = Math.min(p.maxHp, p.hp + heal)
+      }
+    }
+    if (p.alive && p.maxMp > 0 && p.mp < p.maxMp) {
+      this.mpRegenTimer += dt
+      const interval = p.inCombat ? MP_REGEN_INTERVAL : MP_REGEN_INTERVAL_IDLE
+      const amount = p.inCombat ? MP_REGEN_AMOUNT : MP_REGEN_AMOUNT_IDLE
+      if (this.mpRegenTimer >= interval) {
+        this.mpRegenTimer -= interval
+        p.mp = Math.min(p.maxMp, p.mp + amount)
+      }
+    }
   }
 
   private autoLockNearest(): void {
