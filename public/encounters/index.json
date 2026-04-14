@@ -1,0 +1,8 @@
+[
+  { "label": "Training Dummy", "description": "Static target, test player skills", "file": "training-dummy.yaml" },
+  { "label": "Boss AI Test", "description": "Aggro, tracking, auto-attack", "file": "boss-ai-test.yaml" },
+  { "label": "Timeline Test", "description": "AOE mechanics showcase", "file": "timeline-test.yaml" },
+  { "label": "Mob Phase Test", "description": "Boss → Adds → Boss return", "file": "mob-phase-test.yaml" },
+  { "label": "Death Zone Test", "description": "Navigate through lethal terrain", "file": "deathzone-test.yaml" },
+  { "label": "Leviathan Test", "description": "Boat arena, side slap + camera tilt", "file": "leviathan-test.yaml" }
+]

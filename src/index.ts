@@ -88,4 +88,4 @@ export { DevTerminal } from './devtools/dev-terminal'
 export { CommandRegistry } from './devtools/commands'
 
 // Demo
-export { startDemo } from './demo/demo-scene'
+export { startTimelineDemo } from './demo/demo-timeline'

@@ -1,0 +1,51 @@
+# Boss AI 测试
+# 圆形场地，boss会引战、追击、自动攻击
+
+arena:
+  name: Boss Arena
+  shape: circle
+  radius: 15
+  boundary: wall
+
+entities:
+  boss:
+    type: boss
+    group: boss
+    hp: 200000
+    attack: 1
+    speed: 3
+    size: 1.5
+    facing: 180
+    position: { x: 0, y: 0, z: 0 }
+    autoAttackRange: 5
+    aggroRange: 8
+
+player:
+  hp: 30000
+  attack: 1000
+  speed: 6
+  size: 0.5
+  autoAttackRange: 5
+  position: { x: 0, y: -12, z: 0 }
+
+boss_ai:
+  chaseRange: 5
+  autoAttackRange: 15
+  autoAttackInterval: 3000
+  aggroRange: 8
+
+local_skills:
+  boss_auto:
+    name: 攻撃
+    type: ability
+    targetType: single
+    requiresTarget: true
+    range: 15
+    effects: [{ type: damage, potency: 1 }]
+
+skills: {}
+
+# Boss AI is enabled on combat start, no scripted timeline
+timeline:
+  - at: 0
+    action: enable_ai
