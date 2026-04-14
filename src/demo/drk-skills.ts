@@ -8,6 +8,7 @@ export const DRK_SKILLS: SkillDef[] = [
   {
     id: 'drk_shadow_bolt',
     name: '噬魂斩',
+    icon: icon('skill_icons/32_DRK', 3051),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -16,7 +17,7 @@ export const DRK_SKILLS: SkillDef[] = [
     requiresTarget: true,
     range: 4,
     mpCost: 0,
-    hpCost: 1000,
+    hpCost: 1100,
     hpCostSwapBuff: 'drk_dark_mind',
     hpCostReverseBuff: 'drk_living_dead',
     effects: [{ type: 'damage', potency: 2.5 }],
@@ -25,6 +26,7 @@ export const DRK_SKILLS: SkillDef[] = [
   {
     id: 'drk_drain_slash',
     name: '吸收波',
+    icon: icon('skill_icons/32_DRK', 3064),
     type: 'spell',
     castTime: 0,
     cooldown: 0,
@@ -42,6 +44,7 @@ export const DRK_SKILLS: SkillDef[] = [
   {
     id: 'drk_dark_mind',
     name: '嗜血',
+    icon: icon('skill_icons/32_DRK', 3071),
     type: 'ability',
     castTime: 0,
     cooldown: 30000,
@@ -51,7 +54,7 @@ export const DRK_SKILLS: SkillDef[] = [
     range: 0,
     mpCost: 0,
     effects: [
-      { type: 'heal', potency: 1.0 },
+      { type: 'heal', potency: 1.5 },
       { type: 'apply_buff', buffId: 'drk_dark_mind' },
     ],
   },
@@ -59,6 +62,7 @@ export const DRK_SKILLS: SkillDef[] = [
   {
     id: 'drk_shadow_wall',
     name: '暗影墙',
+    icon: icon('skill_icons/32_DRK', 3075),
     type: 'ability',
     castTime: 0,
     cooldown: 30000,
@@ -76,6 +80,7 @@ export const DRK_SKILLS: SkillDef[] = [
   {
     id: 'drk_living_dead',
     name: '行尸走肉',
+    icon: icon('skill_icons/32_DRK', 3077),
     type: 'ability',
     castTime: 0,
     cooldown: 300000,
@@ -94,14 +99,14 @@ export const DRK_BUFFS: Record<string, BuffDef> = {
   drk_dark_mind: {
     id: 'drk_dark_mind',
     name: '嗜血',
-    description: '噬魂斩消耗MP代替HP。攻击附带20%吸血效果。',
+    description: '噬魂斩消耗MP代替HP。攻击附带25%吸血效果。',
     icon: icon('player_skill_effects',13109),
     type: 'buff',
     duration: 10000,
     stackable: false,
     maxStacks: 1,
     effects: [
-      { type: 'lifesteal', value: 0.2 },
+      { type: 'lifesteal', value: 0.25 },
     ],
   },
   drk_shadow_wall: {

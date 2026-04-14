@@ -6,8 +6,9 @@ export const BLM_SKILLS: SkillDef[] = [
   {
     id: 'blm_fire',
     name: '火炎',
+    icon: icon('skill_icons/25_BLM', 451),
     type: 'spell',
-    castTime: 2500,
+    castTime: 2300,
     cooldown: 0,
     gcd: true,
     targetType: 'single',
@@ -26,6 +27,7 @@ export const BLM_SKILLS: SkillDef[] = [
   {
     id: 'blm_ice',
     name: '冰结',
+    icon: icon('skill_icons/25_BLM', 454),
     type: 'spell',
     castTime: 1800,
     cooldown: 0,
@@ -45,6 +47,7 @@ export const BLM_SKILLS: SkillDef[] = [
   {
     id: 'blm_flare',
     name: '核爆',
+    icon: icon('skill_icons/25_BLM', 2652),
     type: 'ability',
     castTime: 0,
     cooldown: 0,
@@ -70,6 +73,7 @@ export const BLM_SKILLS: SkillDef[] = [
   {
     id: 'blm_leylines',
     name: '黑魔纹',
+    icon: icon('skill_icons/25_BLM', 2656),
     type: 'ability',
     castTime: 0,
     cooldown: 60000,
@@ -110,9 +114,10 @@ export const BLM_SKILLS: SkillDef[] = [
 export const BLM_LEYLINE_STEP: SkillDef = {
   id: 'blm_leyline_step',
   name: '魔纹步',
+    icon: icon('skill_icons/25_BLM', 2661),
   type: 'ability',
   castTime: 0,
-  cooldown: 10000,
+  cooldown: 3000,
   gcd: false,
   targetType: 'single',
   requiresTarget: false,

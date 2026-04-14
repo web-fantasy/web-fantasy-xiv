@@ -125,7 +125,7 @@ export class CombatResolver {
           if (!caster) break
           const llCenter = caster.customData.leyLinesCenter as { x: number; y: number } | undefined
           if (!llCenter) break
-          this.applyDisplacement(caster, llCenter, 300, EASING.easeOut)
+          this.applyDisplacement(caster, llCenter, 500, EASING.easeOut)
           break
         }
 

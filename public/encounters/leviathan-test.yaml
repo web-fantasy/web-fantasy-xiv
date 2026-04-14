@@ -17,10 +17,10 @@ entities:
     attack: 1
     speed: 0
     size: 1.5
-    facing: 180
+    facing: 270
     position: { x: 5, y: 0, z: 0 }
     autoAttackRange: 5
-    aggroRange: 999
+    aggroRange: 7
     visible: true
     targetable: true
 
@@ -31,7 +31,7 @@ boss_ai:
   chaseRange: 5
   autoAttackRange: 15
   autoAttackInterval: 3000
-  aggroRange: 999
+  aggroRange: 7
   aggroAngle: 360
 
 local_skills:
@@ -122,7 +122,7 @@ skills: {}
 
 timeline:
   # Phase 0: boss追击平A (0-8s)
-  - at: 0
+  - at: 1
     action: enable_ai
 
   # Phase 1: 第一次拍击 — 左侧 (8s)

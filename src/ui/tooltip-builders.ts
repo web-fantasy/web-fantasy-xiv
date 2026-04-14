@@ -158,7 +158,7 @@ function formatEffect(e: { type: string; potency?: number; buffId?: string; buff
     case 'consume_buff_stacks': return `<span style="color:#cc88ff">消耗 ${e.buffId} ×${e.stacks}</span>`
     case 'restore_mp': return `<span style="color:#4488cc">恢复 ${((e.percent ?? 0) * 100).toFixed(0)}% MP</span>`
     case 'dash_forward': return `<span style="color:#88ccff">向前方冲刺 ${e.distance}m</span><br><span style="color:#666;font-size:10px">止步状态下无法发动</span>`
-    case 'dash_to_ley_lines': return `<span style="color:#88ccff">冲向黑魔纹中心</span>`
+    case 'dash_to_ley_lines': return `<span style="color:#88ccff">迅速回到黑魔纹中心</span>`
     case 'knockback': return `<span style="color:#ffaa66">击退 ${e.distance}m</span>`
     case 'pull': return `<span style="color:#ffaa66">吸引 ${e.distance}m</span>`
     default: return `<span style="color:#888">${e.type}</span>`
