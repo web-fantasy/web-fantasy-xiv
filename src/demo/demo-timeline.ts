@@ -65,6 +65,9 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       extraSkills: job.extraSkills,
       autoAttackSkill: job.autoAttackSkill,
       autoAttackInterval: job.autoAttackInterval,
+      noMpRegen: job.stats.noMpRegen,
+      passiveBuffs: job.passiveBuffs,
+      buffDefs: job.buffMap,
     },
     restart: () => startTimelineDemo(canvas, uiRoot, encounterUrl),
   })
@@ -80,6 +83,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     attack: job.stats.attack,
     speed: job.stats.speed,
     autoAttackRange: job.stats.autoAttackRange,
+    gcdDuration: job.stats.gcdDuration,
   })
 
   // Create all entities from encounter data
