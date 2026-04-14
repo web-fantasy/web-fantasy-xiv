@@ -1,5 +1,5 @@
 import type { Entity } from '@/entity/entity'
-import type { SkillDef } from '@/core/types'
+import type { DeathZoneDef, SkillDef } from '@/core/types'
 import type { InputManager } from '@/input/input-manager'
 import type { SkillResolver } from '@/skill/skill-resolver'
 import type { BuffSystem } from '@/combat/buff'
@@ -29,6 +29,11 @@ export class PlayerInputDriver {
   private queuedSkill: SkillDef | null = null
   private regenTimer = 0
   private mpRegenTimer = 0
+  private getWallZones: () => DeathZoneDef[] = () => []
+
+  setWallZoneProvider(fn: () => DeathZoneDef[]): void {
+    this.getWallZones = fn
+  }
 
   constructor(
     private entity: Entity,
@@ -78,8 +83,9 @@ export class PlayerInputDriver {
         p.position.y += dir.y * distance
 
         const clamped = this.arena.clampPosition({ x: p.position.x, y: p.position.y })
-        p.position.x = clamped.x
-        p.position.y = clamped.y
+        const wallClamped = this.arena.clampToWallZones(clamped, this.getWallZones())
+        p.position.x = wallClamped.x
+        p.position.y = wallClamped.y
 
         this.bus.emit('player:walk', { entity: p, position: { x: p.position.x, y: p.position.y } })
       }

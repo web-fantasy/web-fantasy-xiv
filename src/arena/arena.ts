@@ -1,5 +1,5 @@
 // src/arena/arena.ts
-import type { ArenaDef, Vec2 } from '@/core/types'
+import type { ArenaDef, DeathZoneDef, Vec2 } from '@/core/types'
 import { isPointInAoeShape } from '@/skill/aoe-shape'
 
 export class Arena {
@@ -29,6 +29,43 @@ export class Arena {
     }
 
     return false
+  }
+
+  /**
+   * Push a point out of any wall zone it's inside.
+   * Uses push-out along vector from zone center to point.
+   */
+  clampToWallZones(point: Vec2, wallZones: DeathZoneDef[]): Vec2 {
+    let result = { ...point }
+    for (const zone of wallZones) {
+      if (!isPointInAoeShape(result, zone.center, zone.shape, zone.facing)) continue
+
+      const dx = result.x - zone.center.x
+      const dy = result.y - zone.center.y
+      const dist = Math.sqrt(dx * dx + dy * dy)
+
+      if (dist < 0.001) {
+        // Point is exactly at center — push in arbitrary direction
+        result = { x: zone.center.x, y: zone.center.y + this.getZoneRadius(zone) + 0.1 }
+        continue
+      }
+
+      const nx = dx / dist
+      const ny = dy / dist
+      const pushDist = this.getZoneRadius(zone) + 0.1
+      result = { x: zone.center.x + nx * pushDist, y: zone.center.y + ny * pushDist }
+    }
+    return result
+  }
+
+  /** Approximate radius for push-out distance */
+  private getZoneRadius(zone: DeathZoneDef): number {
+    switch (zone.shape.type) {
+      case 'circle': return zone.shape.radius
+      case 'fan': return zone.shape.radius
+      case 'ring': return zone.shape.outerRadius
+      case 'rect': return Math.max(zone.shape.length, zone.shape.width) / 2
+    }
   }
 
   clampPosition(point: Vec2): Vec2 {

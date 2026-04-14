@@ -12,6 +12,7 @@ const DEATH_ZONE_EMISSIVE = new Color3(0.15, 0.02, 0.18)
 export class ArenaRenderer {
   private deathZoneMeshes = new Map<string, Mesh>()
   private dzMat: StandardMaterial
+  private wallMat: StandardMaterial
 
   constructor(private scene: Scene, arenaDef: ArenaDef, private bus?: EventBus) {
     if (arenaDef.shape.type === 'circle') {
@@ -26,10 +27,16 @@ export class ArenaRenderer {
     this.dzMat.specularColor = Color3.Black()
     this.dzMat.alpha = 0.8
 
+    this.wallMat = new StandardMaterial('wallzone-mat', scene)
+    this.wallMat.diffuseColor = new Color3(0.2, 0.25, 0.35)
+    this.wallMat.emissiveColor = new Color3(0.1, 0.12, 0.18)
+    this.wallMat.specularColor = Color3.Black()
+    this.wallMat.alpha = 0.85
+
     // Listen for dynamic death zone events
     if (bus) {
-      bus.on('deathzone:added', (payload: { zone: { id: string; center: { x: number; y: number }; facing: number; shape: AoeShapeDef } }) => {
-        this.addDeathZoneMesh(payload.zone.id, payload.zone.center, payload.zone.shape, payload.zone.facing)
+      bus.on('deathzone:added', (payload: { zone: { id: string; center: { x: number; y: number }; facing: number; shape: AoeShapeDef; behavior?: string } }) => {
+        this.addDeathZoneMesh(payload.zone.id, payload.zone.center, payload.zone.shape, payload.zone.facing, payload.zone.behavior)
       })
       bus.on('deathzone:removed', (payload: { id: string }) => {
         this.removeDeathZoneMesh(payload.id)
@@ -37,7 +44,7 @@ export class ArenaRenderer {
     }
   }
 
-  private addDeathZoneMesh(id: string, center: { x: number; y: number }, shape: AoeShapeDef, facing: number): void {
+  private addDeathZoneMesh(id: string, center: { x: number; y: number }, shape: AoeShapeDef, facing: number, behavior?: string): void {
     // Remove existing mesh with same id
     this.removeDeathZoneMesh(id)
 
@@ -80,7 +87,7 @@ export class ArenaRenderer {
     } else {
       mesh.position.set(center.x, 0.02, center.y)
     }
-    mesh.material = this.dzMat
+    mesh.material = behavior === 'wall' ? this.wallMat : this.dzMat
     this.deathZoneMeshes.set(id, mesh)
   }
 

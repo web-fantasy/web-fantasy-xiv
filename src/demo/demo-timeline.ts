@@ -102,6 +102,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   const scheduler = new PhaseScheduler(s.bus, enc.phases)
   const deathZoneMgr = new DeathZoneManager(s.bus)
   if (enc.arena.deathZones) deathZoneMgr.loadInitial(enc.arena.deathZones)
+  s.playerDriver.setWallZoneProvider(() => deathZoneMgr.getWallZones())
 
   // Helper: resolve entity from action (default: boss)
   function resolveEntity(action: TimelineAction): Entity | undefined {
@@ -226,6 +227,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
             center: { x: action.deathZone.center.x, y: action.deathZone.center.y },
             facing: action.deathZone.facing ?? 0,
             shape: action.deathZone.shape,
+            behavior: action.deathZone.behavior ?? 'lethal',
           })
         }
         break

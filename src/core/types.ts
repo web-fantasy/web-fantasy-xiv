@@ -106,6 +106,8 @@ export interface DeathZoneDef {
   center: Vec2
   facing: number
   shape: AoeShapeDef
+  /** 'lethal' = instant death, 'wall' = blocks movement (death if already inside) */
+  behavior: 'lethal' | 'wall'
 }
 
 export interface ArenaDef {

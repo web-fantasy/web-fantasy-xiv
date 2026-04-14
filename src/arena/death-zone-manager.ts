@@ -11,6 +11,7 @@ export class DeathZoneManager {
   /** Load initial (static) death zones from arena config */
   loadInitial(zones: DeathZoneDef[]): void {
     for (const z of zones) {
+      if (!z.behavior) (z as any).behavior = 'lethal'
       this.zones.set(z.id, z)
       this.bus.emit('deathzone:added', { zone: z })
     }
@@ -40,5 +41,9 @@ export class DeathZoneManager {
 
   getAll(): DeathZoneDef[] {
     return [...this.zones.values()]
+  }
+
+  getWallZones(): DeathZoneDef[] {
+    return [...this.zones.values()].filter(z => z.behavior === 'wall')
   }
 }

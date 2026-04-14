@@ -20,6 +20,7 @@ export function parseArenaConfig(raw: RawArenaConfig): ArenaDef {
     center: { x: z.center.x, y: z.center.y },
     facing: z.facing ?? 0,
     shape: z.shape ?? { type: 'circle' as const, radius: z.radius ?? 1 },
+    behavior: (z as any).behavior ?? 'lethal',
   }))
   return { name: raw.name, shape, boundary: raw.boundary as ArenaDef['boundary'], deathZones }
 }
@@ -110,7 +111,7 @@ export interface TimelineAction {
   locked?: boolean
   value?: boolean     // for set_visible / set_targetable
   // death zone fields
-  deathZone?: { id: string; center: { x: number; y: number }; facing?: number; shape: any }
+  deathZone?: { id: string; center: { x: number; y: number }; facing?: number; shape: any; behavior?: 'lethal' | 'wall' }
   deathZoneId?: string   // for remove_death_zone
   // dialog fields
   dialogText?: string     // for show_dialog
