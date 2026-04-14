@@ -85,6 +85,9 @@ export const timelineEntries = signal<TimelineEntry[]>([])
 export const timelineCollapsed = signal(localStorage.getItem('xiv-timeline-collapsed') === 'true')
 export const currentPhaseInfo = signal<{ label: string; showLabel: boolean } | null>(null)
 
+// Job selection (persists across encounters)
+export const selectedJobId = signal(localStorage.getItem('xiv-selected-job') ?? 'default')
+
 // Debug
 export const debugFps = signal(0)
 export const debugPlayerPos = signal({ x: 0, y: 0 })

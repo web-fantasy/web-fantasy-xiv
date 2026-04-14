@@ -3,8 +3,8 @@ import { useRoute } from 'preact-iso'
 import { useEngine } from '../engine-context'
 import { createStateAdapter } from '../state-adapter'
 import { startTimelineDemo, getActiveScene, disposeActiveScene } from '@/demo/demo-timeline'
-import { resetState, skillBarEntries as skillBarEntriesSignal, buffDefs as buffDefsSignal } from '../state'
-import { DEFAULT_JOB } from '@/demo/player-job'
+import { resetState, skillBarEntries as skillBarEntriesSignal, buffDefs as buffDefsSignal, selectedJobId } from '../state'
+import { getJob } from '@/demo/player-job'
 import { BossHpBar, PlayerHpBar, PlayerMpBar } from './HpBar'
 import { PlayerCastBar, BossCastBar } from './CastBar'
 import { SkillBar } from './SkillBar'
@@ -54,9 +54,10 @@ export function GameView() {
     const base = import.meta.env.BASE_URL
     const encounterUrl = `${base}encounters/${id}.yaml`
 
-    // Set skill bar + buff defs for HUD
-    skillBarEntriesSignal.value = DEFAULT_JOB.skillBar
-    buffDefsSignal.value = DEFAULT_JOB.buffMap as any
+    // Set skill bar + buff defs for HUD based on selected job
+    const job = getJob(selectedJobId.value)
+    skillBarEntriesSignal.value = job.skillBar
+    buffDefsSignal.value = job.buffMap as any
 
     let adapter: ReturnType<typeof createStateAdapter> | null = null
     let active = true

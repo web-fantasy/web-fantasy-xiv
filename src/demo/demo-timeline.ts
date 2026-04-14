@@ -5,8 +5,8 @@ import { PhaseScheduler } from '@/timeline/phase-scheduler'
 import { loadEncounter } from '@/game/encounter-loader'
 import { DeathZoneManager } from '@/arena/death-zone-manager'
 import { ScriptRunner } from '@/timeline/script-runner'
-import { DEFAULT_JOB } from './player-job'
-import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSignal, timelineEntries, dialogText, currentPhaseInfo, type TimelineEntry } from '@/ui/state'
+import { getJob } from './player-job'
+import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSignal, timelineEntries, dialogText, currentPhaseInfo, selectedJobId, type TimelineEntry } from '@/ui/state'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
 import type { EncounterData } from '@/game/encounter-loader'
@@ -56,13 +56,15 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   const engine = Engine.Instances.find(e => e.getRenderingCanvas() === canvas) as Engine | undefined
   if (!engine) throw new Error('No Engine found for canvas')
 
+  const job = getJob(selectedJobId.value)
+
   scene = new GameScene({
     engine, uiRoot, arena: enc.arena,
     playerInputConfig: {
-      skills: DEFAULT_JOB.skills,
-      extraSkills: DEFAULT_JOB.extraSkills,
-      autoAttackSkill: DEFAULT_JOB.autoAttackSkill,
-      autoAttackInterval: DEFAULT_JOB.autoAttackInterval,
+      skills: job.skills,
+      extraSkills: job.extraSkills,
+      autoAttackSkill: job.autoAttackSkill,
+      autoAttackInterval: job.autoAttackInterval,
     },
     restart: () => startTimelineDemo(canvas, uiRoot, encounterUrl),
   })
@@ -73,6 +75,11 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     id: 'player', type: 'player',
     position: { x: 0, y: -12, z: 0 },
     ...enc.player,
+    hp: job.stats.hp, maxHp: job.stats.hp,
+    mp: job.stats.mp, maxMp: job.stats.mp,
+    attack: job.stats.attack,
+    speed: job.stats.speed,
+    autoAttackRange: job.stats.autoAttackRange,
   })
 
   // Create all entities from encounter data
@@ -99,7 +106,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   }
 
   const boss = entityMap.get('boss')!
-  s.combatResolver.registerBuffs(DEFAULT_JOB.buffs)
+  s.combatResolver.registerBuffs(job.buffs)
 
   let combatStarted = false
   const bossAutoSkill = enc.skills.get('boss_auto')

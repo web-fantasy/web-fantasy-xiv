@@ -1,6 +1,6 @@
 import { LocationProvider, Router, Route } from 'preact-iso'
 import { EngineProvider } from './engine-context'
-import { MainMenu } from './components/MainMenu'
+import { MainMenu, EncounterListPage, JobPage, AboutPage } from './components/MainMenu'
 import { GameView } from './components/GameView'
 
 export function App() {
@@ -16,6 +16,9 @@ export function App() {
         >
           <Router>
             <Route path="/" component={MainMenu} />
+            <Route path="/encounters" component={EncounterListPage} />
+            <Route path="/job" component={JobPage} />
+            <Route path="/about" component={AboutPage} />
             <Route path="/encounter/:id" component={GameView} />
           </Router>
         </div>
