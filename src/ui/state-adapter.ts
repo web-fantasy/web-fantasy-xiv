@@ -2,10 +2,10 @@ import type { EventBus } from '@/core/event-bus'
 import type { Entity } from '@/entity/entity'
 import type { SceneManager } from '@/renderer/scene-manager'
 import type { BuffSystem } from '@/combat/buff'
-import { GCD_DURATION } from '@/skill/skill-resolver'
 import * as state from './state'
 
 let dmgIdCounter = 0
+const playerDamageBySkill = new Map<string, number>()
 
 export interface StateAdapterDeps {
   bus: EventBus
@@ -16,7 +16,12 @@ export interface StateAdapterDeps {
 export function createStateAdapter(deps: StateAdapterDeps) {
   const { bus, sceneManager, buffSystem } = deps
 
-  const onDamage = (payload: { target: Entity; amount: number }) => {
+  const onDamage = (payload: { target: Entity; amount: number; source?: Entity; skill?: { name: string } | null }) => {
+    // Accumulate player damage for DPS meter
+    if (payload.source?.type === 'player' && payload.amount > 0 && payload.skill?.name) {
+      const name = payload.skill.name
+      playerDamageBySkill.set(name, (playerDamageBySkill.get(name) ?? 0) + payload.amount)
+    }
     let sx = window.innerWidth / 2
     let sy = window.innerHeight / 2
 
@@ -68,7 +73,7 @@ export function createStateAdapter(deps: StateAdapterDeps) {
     state.playerHp.value = { current: player.hp, max: player.maxHp }
     if (player.maxMp > 0) state.playerMp.value = { current: player.mp, max: player.maxMp }
     state.bossHp.value = { current: boss.hp, max: boss.maxHp }
-    state.gcdState.value = { remaining: player.gcdTimer, total: GCD_DURATION }
+    state.gcdState.value = { remaining: player.gcdTimer, total: player.gcdDuration }
 
     if (player.casting) {
       state.playerCast.value = {
@@ -92,6 +97,7 @@ export function createStateAdapter(deps: StateAdapterDeps) {
       return {
         defId: inst.defId,
         name: def?.name ?? inst.defId,
+        description: def?.description,
         type: (def?.type ?? 'buff') as 'buff' | 'debuff',
         stacks: inst.stacks,
         remaining: inst.remaining,
@@ -106,6 +112,24 @@ export function createStateAdapter(deps: StateAdapterDeps) {
     state.cooldowns.value = cdMap
 
     state.debugPlayerPos.value = { x: player.position.x, y: player.position.y }
+
+    // Tooltip context: actual GCD + haste for real-time tooltip display
+    const haste = buffSystem.getHaste(player)
+    state.tooltipContext.value = { gcdDuration: player.gcdDuration, haste }
+
+    // DPS meter
+    const totalDamage = [...playerDamageBySkill.values()].reduce((s, v) => s + v, 0)
+    const elapsed = state.combatElapsed.value
+    const dps = elapsed && elapsed > 0 ? totalDamage / (elapsed / 1000) : 0
+    const sorted = [...playerDamageBySkill.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+    const skills = sorted.map(([name, total]) => ({
+      name,
+      total,
+      percent: totalDamage > 0 ? total / totalDamage : 0,
+    }))
+    state.dpsMeter.value = { skills, totalDamage, dps }
   }
 
   function dispose(): void {
@@ -113,6 +137,7 @@ export function createStateAdapter(deps: StateAdapterDeps) {
     bus.off('skill:cast_start', onCastStart)
     bus.off('skill:cast_complete', onCastComplete)
     bus.off('skill:cast_interrupted', onCastInterrupted)
+    playerDamageBySkill.clear()
     state.resetState()
   }
 

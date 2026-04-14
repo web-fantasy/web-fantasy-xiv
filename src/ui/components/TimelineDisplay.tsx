@@ -1,8 +1,22 @@
 import { timelineEntries, timelineCollapsed, currentPhaseInfo } from '../state'
+import { DpsMeter } from './DpsMeter'
 
 const WINDOW_MS = 30000
 
-export function TimelineDisplay() {
+/** Shared fixed container for Timeline + DPS meter */
+export function SidePanel() {
+  return (
+    <div
+      class="absolute z-50 text-xs"
+      style={{ top: 60, left: 12, width: 220, fontFamily: "'Segoe UI', sans-serif", pointerEvents: 'auto' }}
+    >
+      <TimelineDisplay />
+      <DpsMeter />
+    </div>
+  )
+}
+
+function TimelineDisplay() {
   const collapsed = timelineCollapsed.value
   const entries = timelineEntries.value
   const phase = currentPhaseInfo.value
@@ -14,10 +28,7 @@ export function TimelineDisplay() {
   }
 
   return (
-    <div
-      class="absolute z-50 text-xs"
-      style={{ top: 60, left: 12, width: 220, fontFamily: "'Segoe UI', sans-serif", pointerEvents: 'auto' }}
-    >
+    <div>
       <div
         class="flex justify-between items-center cursor-pointer select-none"
         style={{

@@ -52,7 +52,7 @@ export function BuffBar() {
   return (
     <div
       style={{
-        position: 'absolute', bottom: 130, left: '50%', transform: 'translateX(-50%)',
+        position: 'absolute', bottom: 145, left: '50%', transform: 'translateX(-50%)',
         display: 'flex', gap: 4, pointerEvents: 'none',
       }}
     >

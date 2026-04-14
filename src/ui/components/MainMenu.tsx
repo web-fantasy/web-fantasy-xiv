@@ -171,12 +171,30 @@ export function JobPage() {
             display: 'flex', flexDirection: 'column', gap: 6,
           }}>
             {job.skillBar.map((entry) => (
-              <CompactSkillRow key={entry.key} keyLabel={entry.key} skill={entry.skill} buffDefs={job.buffMap} />
+              <CompactSkillRow key={entry.key} keyLabel={entry.key} skill={entry.skill} buffDefs={job.buffMap} gcdDuration={job.stats.gcdDuration} />
             ))}
           </div>
 
-          {/* Footer: equip button (fixed) */}
-          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', paddingTop: 12 }}>
+          {/* Footer: equip + trial buttons (fixed) */}
+          <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 12 }}>
+            <a
+              href="/encounter/training-dummy"
+              style={{
+                padding: '6px 16px', fontSize: 12,
+                background: 'rgba(184,160,106,0.15)',
+                border: '1px solid rgba(184,160,106,0.4)',
+                borderRadius: 4,
+                color: '#b8a06a',
+                cursor: 'pointer',
+                textDecoration: 'none',
+              }}
+              onClick={() => {
+                selectedJobId.value = job.id
+                localStorage.setItem('xiv-selected-job', job.id)
+              }}
+            >
+              试玩
+            </a>
             <button
               disabled={isActive}
               style={{
@@ -240,12 +258,13 @@ export function AboutPage() {
 
 // ─── Shared sub-components ───────────────────────────────
 
-function CompactSkillRow({ keyLabel, skill, buffDefs }: {
+function CompactSkillRow({ keyLabel, skill, buffDefs, gcdDuration }: {
   keyLabel: string
   skill: any
   buffDefs: Map<string, any>
+  gcdDuration?: number
 }) {
-  const html = buildSkillTooltip(skill, buffDefs.size > 0 ? buffDefs : undefined)
+  const html = buildSkillTooltip(skill, buffDefs.size > 0 ? buffDefs : undefined, { gcdDuration: gcdDuration ?? 2500, haste: 0 })
   return (
     <div style={{
       display: 'flex', gap: 8, alignItems: 'flex-start',

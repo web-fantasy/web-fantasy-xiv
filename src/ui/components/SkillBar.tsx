@@ -1,4 +1,4 @@
-import { skillBarEntries, cooldowns, gcdState, buffDefs } from '../state'
+import { skillBarEntries, cooldowns, gcdState, buffDefs, buffs, tooltipContext } from '../state'
 import { buildSkillTooltip } from '../tooltip-builders'
 import { showTooltip, hideTooltip } from './Tooltip'
 
@@ -7,6 +7,8 @@ export function SkillBar() {
   const cds = cooldowns.value
   const gcd = gcdState.value
   const defs = buffDefs.value
+  const activeBuffIds = new Set(buffs.value.map(b => b.defId))
+  const ctx = tooltipContext.value
 
   return (
     <div
@@ -23,6 +25,13 @@ export function SkillBar() {
         const active = isGcd ? gcd.remaining : cdRemaining
         const cdPct = cdTotal > 0 && active > 0 ? (active / cdTotal) * 100 : 0
         const cdText = active > 0 ? (active / 1000).toFixed(1) : null
+        const reqBuffs = (skill as any).requiresBuffs as string[] | undefined
+        const reqStacks = (skill as any).requiresBuffStacks as { buffId: string; stacks: number } | undefined
+        const lockedByBuffs = reqBuffs ? !reqBuffs.every(id => activeBuffIds.has(id)) : false
+        const lockedByStacks = reqStacks
+          ? (buffs.value.find(b => b.defId === reqStacks.buffId)?.stacks ?? 0) < reqStacks.stacks
+          : false
+        const locked = lockedByBuffs || lockedByStacks
 
         return (
           <div
@@ -30,17 +39,18 @@ export function SkillBar() {
             style={{
               width: 48, height: 48,
               background: 'rgba(0,0,0,0.8)',
-              border: '2px solid rgba(255,255,255,0.4)',
+              border: locked ? '2px solid rgba(255,50,50,0.4)' : '2px solid rgba(255,255,255,0.4)',
+              opacity: locked ? 0.5 : 1,
               borderRadius: 4,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               position: 'relative', fontSize: 12, cursor: 'default',
             }}
             onMouseEnter={(e) => {
-              const html = buildSkillTooltip(skill as any, defs.size > 0 ? defs as any : undefined)
+              const html = buildSkillTooltip(skill as any, defs.size > 0 ? defs as any : undefined, ctx)
               showTooltip(html, e.clientX, e.clientY)
             }}
             onMouseMove={(e) => {
-              const html = buildSkillTooltip(skill as any, defs.size > 0 ? defs as any : undefined)
+              const html = buildSkillTooltip(skill as any, defs.size > 0 ? defs as any : undefined, ctx)
               showTooltip(html, e.clientX, e.clientY)
             }}
             onMouseLeave={hideTooltip}

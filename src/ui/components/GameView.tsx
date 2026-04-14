@@ -3,7 +3,7 @@ import { useRoute } from 'preact-iso'
 import { useEngine } from '../engine-context'
 import { createStateAdapter } from '../state-adapter'
 import { startTimelineDemo, getActiveScene, disposeActiveScene } from '@/demo/demo-timeline'
-import { resetState, skillBarEntries as skillBarEntriesSignal, buffDefs as buffDefsSignal, selectedJobId } from '../state'
+import { resetState, skillBarEntries as skillBarEntriesSignal, buffDefs as buffDefsSignal, selectedJobId, tooltipContext } from '../state'
 import { getJob } from '@/demo/player-job'
 import { BossHpBar, PlayerHpBar, PlayerMpBar } from './HpBar'
 import { PlayerCastBar, BossCastBar } from './CastBar'
@@ -15,7 +15,7 @@ import { DialogBox } from './DialogBox'
 import { PauseMenu } from './PauseMenu'
 import { BattleEndOverlay } from './BattleEndOverlay'
 import { DebugInfo } from './DebugInfo'
-import { TimelineDisplay } from './TimelineDisplay'
+import { SidePanel } from './TimelineDisplay'
 import { Tooltip } from './Tooltip'
 import { SkillPanel, toggleSkillPanel, useSkillPanelKey } from './SkillPanel'
 
@@ -58,6 +58,7 @@ export function GameView() {
     const job = getJob(selectedJobId.value)
     skillBarEntriesSignal.value = job.skillBar
     buffDefsSignal.value = job.buffMap as any
+    tooltipContext.value = { gcdDuration: job.stats.gcdDuration ?? 2500, haste: 0 }
 
     let adapter: ReturnType<typeof createStateAdapter> | null = null
     let active = true
@@ -111,7 +112,7 @@ export function GameView() {
       <PauseMenu onRetry={handleRetry} />
       <BattleEndOverlay onRetry={handleRetry} />
       <DebugInfo />
-      <TimelineDisplay />
+      <SidePanel />
       <Tooltip />
       <SkillPanel />
     </div>

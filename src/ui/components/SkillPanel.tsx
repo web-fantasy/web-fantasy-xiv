@@ -1,6 +1,6 @@
 import { signal } from '@preact/signals'
 import { useEffect } from 'preact/hooks'
-import { skillBarEntries, buffDefs, type SkillBarEntry } from '../state'
+import { skillBarEntries, buffDefs, tooltipContext, type SkillBarEntry } from '../state'
 import { buildSkillTooltip } from '../tooltip-builders'
 
 export const skillPanelOpen = signal(false)
@@ -91,7 +91,7 @@ function SkillCard({ keyLabel, skill, buffDefs: defs }: {
   skill: any
   buffDefs: Map<string, any>
 }) {
-  const html = buildSkillTooltip(skill, defs.size > 0 ? defs : undefined)
+  const html = buildSkillTooltip(skill, defs.size > 0 ? defs : undefined, tooltipContext.value)
 
   return (
     <div style={{

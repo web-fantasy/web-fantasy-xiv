@@ -23,6 +23,7 @@ export interface DamageEvent {
 export interface BuffSnapshot {
   defId: string
   name: string
+  description?: string
   type: 'buff' | 'debuff'
   stacks: number
   remaining: number
@@ -67,6 +68,18 @@ export const combatElapsed = signal<number | null>(null)
 // Scene-lifetime config (set once per encounter)
 export const skillBarEntries = signal<SkillBarEntry[]>([])
 export const buffDefs = signal<Map<string, BuffDef>>(new Map())
+/** Runtime tooltip context: actual GCD duration and haste value */
+export const tooltipContext = signal<{ gcdDuration: number; haste: number }>({ gcdDuration: 2500, haste: 0 })
+
+// DPS meter
+export interface DpsSkillEntry {
+  name: string
+  total: number
+  percent: number
+}
+export const dpsMeter = signal<{ skills: DpsSkillEntry[]; totalDamage: number; dps: number }>({
+  skills: [], totalDamage: 0, dps: 0,
+})
 
 // Timeline display
 export interface TimelineEntry {
@@ -111,6 +124,8 @@ export function resetState(): void {
   combatElapsed.value = null
   skillBarEntries.value = []
   buffDefs.value = new Map()
+  tooltipContext.value = { gcdDuration: 2500, haste: 0 }
+  dpsMeter.value = { skills: [], totalDamage: 0, dps: 0 }
   timelineEntries.value = []
   currentPhaseInfo.value = null
   debugFps.value = 0
