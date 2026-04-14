@@ -77,6 +77,14 @@ UI 层（HTML/CSS overlay）
 
 在 `public/encounters/` 中编写 YAML 文件即可定义新的 BOSS 战。参考 `timeline-test.yaml`。
 
-## 许可证
+## Asset Copyright Notice
+
+Most assets (icons, images, etc.) under `public/assets/` are sourced from FINAL FANTASY XIV and are copyrighted by SQUARE ENIX CO., LTD.
+
+This project is a personal, non-commercial fan work created solely for the purpose of learning game development. It is not intended for profit.
+
+> FINAL FANTASY is a registered trademark of Square Enix Holdings Co., Ltd.
+
+## License
 
 [GPL-3.0](./LICENSE)
