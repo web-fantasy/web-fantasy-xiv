@@ -83,6 +83,7 @@ export interface TimelineEntry {
 
 export const timelineEntries = signal<TimelineEntry[]>([])
 export const timelineCollapsed = signal(localStorage.getItem('xiv-timeline-collapsed') === 'true')
+export const currentPhaseInfo = signal<{ label: string; showLabel: boolean } | null>(null)
 
 // Debug
 export const debugFps = signal(0)
@@ -108,6 +109,7 @@ export function resetState(): void {
   skillBarEntries.value = []
   buffDefs.value = new Map()
   timelineEntries.value = []
+  currentPhaseInfo.value = null
   debugFps.value = 0
   debugPlayerPos.value = { x: 0, y: 0 }
 }

@@ -1,10 +1,11 @@
-import { timelineEntries, timelineCollapsed } from '../state'
+import { timelineEntries, timelineCollapsed, currentPhaseInfo } from '../state'
 
 const WINDOW_MS = 30000
 
 export function TimelineDisplay() {
   const collapsed = timelineCollapsed.value
   const entries = timelineEntries.value
+  const phase = currentPhaseInfo.value
 
   const toggle = () => {
     const next = !collapsed
@@ -28,7 +29,7 @@ export function TimelineDisplay() {
         }}
         onClick={toggle}
       >
-        <span>Timeline</span>
+        <span>{phase?.showLabel ? `Timeline · ${phase.label}` : 'Timeline'}</span>
         <span>{collapsed ? '\u25B8' : '\u25BE'}</span>
       </div>
       {!collapsed && (
@@ -41,9 +42,15 @@ export function TimelineDisplay() {
             overflow: 'hidden',
           }}
         >
-          {entries.map((entry) => (
-            <TimelineRow key={entry.key} entry={entry} />
-          ))}
+          {entries.length === 0 ? (
+            <div style={{ padding: '6px 8px', color: '#666', textAlign: 'center' }}>
+              没有即将到来的威胁
+            </div>
+          ) : (
+            entries.map((entry) => (
+              <TimelineRow key={entry.key} entry={entry} />
+            ))
+          )}
         </div>
       )}
     </div>

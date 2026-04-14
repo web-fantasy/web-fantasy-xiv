@@ -8,7 +8,7 @@ export function DialogBox() {
     <div
       style={{
         position: 'absolute',
-        bottom: '12%',
+        bottom: '22%',
         left: '50%',
         transform: 'translateX(-50%)',
         width: '70%',
