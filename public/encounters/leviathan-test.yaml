@@ -50,7 +50,7 @@ local_skills:
         resolveDelay: 0
         hitEffectDuration: 100
         effects:
-          - { type: knockback, distance: 7, source: { type: position, x: 15, y: 0 } }
+          - { type: knockback, distance: 14, source: { type: position, x: 15, y: 0 } }
 
   # Right slap: boss on right(+X), knockback from left(-X) pushes RIGHT
   slap_right:
@@ -67,7 +67,7 @@ local_skills:
         resolveDelay: 0
         hitEffectDuration: 100
         effects:
-          - { type: knockback, distance: 7, source: { type: position, x: -15, y: 0 } }
+          - { type: knockback, distance: 14, source: { type: position, x: -15, y: 0 } }
 
   # First slap cast: has knockback telegraph so player knows what's coming
   cast_slap_left:
