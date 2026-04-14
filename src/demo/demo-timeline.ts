@@ -238,17 +238,27 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       return // freeze game logic while falling
     }
 
-    // Death zone / boundary check (each frame)
+    // Out-of-bounds: fall off the edge
     if (s.player.alive && !falling) {
       const pos = { x: s.player.position.x, y: s.player.position.y }
-      const inLethalBoundary = s.arena.def.boundary === 'lethal' && !s.arena.isInBounds(pos)
-      const inDeathZone = deathZoneMgr.isInAnyZone(pos)
-
-      if (inLethalBoundary || inDeathZone) {
+      if (s.arena.def.boundary === 'lethal' && !s.arena.isInBounds(pos)) {
         falling = true
         fallElapsed = 0
-        fallReason = inLethalBoundary ? '场外坠落' : '死亡区域'
+        fallReason = '场外坠落'
         ;(s.player as any)._fallOffset = 0
+      }
+    }
+
+    // Death zone: instant kill (no fall animation)
+    if (s.player.alive && !falling) {
+      const pos = { x: s.player.position.x, y: s.player.position.y }
+      if (deathZoneMgr.isInAnyZone(pos)) {
+        s.player.hp -= DEATH_ZONE_DAMAGE
+        s.bus.emit('damage:dealt', {
+          source: { id: '场地' } as any, target: s.player,
+          amount: DEATH_ZONE_DAMAGE,
+          skill: { name: '死亡区域' },
+        })
       }
     }
 
