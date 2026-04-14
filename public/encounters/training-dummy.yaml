@@ -21,11 +21,7 @@ entities:
     aggroRange: 999     # instant engage
 
 player:
-  hp: 30000
-  attack: 1000
   speed: 6
-  size: 0.5
-  autoAttackRange: 5
   position: { x: 0, y: -5, z: 0 }
 
 boss_ai:

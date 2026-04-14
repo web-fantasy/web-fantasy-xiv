@@ -13,15 +13,16 @@ function normalize(dx: number, dy: number): Vec2 {
 }
 
 /**
- * Dash: move entity to 1m from target.
- * If already within 1m, returns original position (skill still counts as used).
+ * Dash: move entity to (autoAttackRange - 0.1) from target.
+ * If already within that range, no displacement.
  */
-export function calcDash(entityPos: Vec2, targetPos: Vec2): Vec2 {
+export function calcDash(entityPos: Vec2, targetPos: Vec2, autoAttackRange: number): Vec2 {
+  const stopDist = autoAttackRange - 0.1
   const d = dist(entityPos, targetPos)
-  if (d <= 1) return { ...entityPos }
+  if (d <= stopDist) return { ...entityPos }
 
   const dir = normalize(targetPos.x - entityPos.x, targetPos.y - entityPos.y)
-  const moveDist = d - 1
+  const moveDist = d - stopDist
   return {
     x: entityPos.x + dir.x * moveDist,
     y: entityPos.y + dir.y * moveDist,

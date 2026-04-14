@@ -58,12 +58,6 @@ entities:
     targetable: false
 
 player:
-  hp: 50000
-  mp: 10000
-  attack: 1000
-  speed: 5
-  size: 0.5
-  autoAttackRange: 5
   position: { x: 0, y: -12, z: 0 }
 
 boss_ai:
@@ -80,7 +74,7 @@ skills:
     targetType: single
     requiresTarget: true
     range: 15
-    effects: [{ type: damage, potency: 1500 }]
+    effects: [{ type: damage, potency: 300 }]
 
   arena_blast:
     name: 震撼登场
@@ -93,7 +87,7 @@ skills:
         shape: { type: circle, radius: 99 }
         resolveDelay: 2000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 12000 }]
+        effects: [{ type: damage, potency: 2400 }]
 
   mob_line:
     name: 直线突刺
@@ -108,7 +102,7 @@ skills:
         telegraphBefore: 3000
         hitEffectDuration: 400
         effects:
-          - { type: damage, potency: 17000 }
+          - { type: damage, potency: 3400 }
 
   mob_scream:
     name: 绝命咆哮
@@ -137,7 +131,7 @@ skills:
         resolveDelay: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 18000 }
+          - { type: damage, potency: 3600 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   boss_circle:
@@ -153,7 +147,7 @@ skills:
         telegraphBefore: 4000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 18000 }
+          - { type: damage, potency: 3600 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   enrage:

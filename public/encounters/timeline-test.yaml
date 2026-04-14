@@ -18,12 +18,6 @@ boss:
   facing: 180
 
 player:
-  hp: 50000
-  mp: 10000
-  attack: 1000
-  speed: 5
-  size: 0.5
-  autoAttackRange: 5
   position: { x: 0, y: -12, z: 0 }
 
 boss_ai:
@@ -46,7 +40,7 @@ skills:
         resolveDelay: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   fan_w:
@@ -61,7 +55,7 @@ skills:
         resolveDelay: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   fan_n:
@@ -76,7 +70,7 @@ skills:
         resolveDelay: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   fan_e:
@@ -91,7 +85,7 @@ skills:
         resolveDelay: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   lr_cleave:
@@ -108,7 +102,7 @@ skills:
         telegraphBefore: 5000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Right 180°: telegraph 4s before resolve, resolves at 7s
       - anchor: { type: caster }
@@ -118,7 +112,7 @@ skills:
         telegraphBefore: 4000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   pull_cast:
@@ -133,7 +127,7 @@ skills:
         resolveDelay: 5000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 2000 }
+          - { type: damage, potency: 400 }
           - { type: knockback, distance: 10, source: { type: caster } }
         displacementHint: knockback
 
@@ -151,7 +145,7 @@ skills:
         telegraphBefore: 5000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Iron Chariot (circle): resolves at 5s
       - anchor: { type: caster }
@@ -161,7 +155,7 @@ skills:
         telegraphBefore: 5000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   pull_instant:
@@ -190,7 +184,7 @@ skills:
         telegraphBefore: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Horizontal (W→E)
       - shape: { type: rect, from: { x: -15, y: 0 }, to: { x: 15, y: 0 }, width: 4 }
@@ -198,7 +192,7 @@ skills:
         telegraphBefore: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   boss_front:
@@ -213,7 +207,7 @@ skills:
         resolveDelay: 3000
         hitEffectDuration: 500
         effects:
-          - { type: damage, potency: 20000 }
+          - { type: damage, potency: 4000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
 
   boss_auto:
@@ -222,7 +216,7 @@ skills:
     targetType: single
     requiresTarget: true
     range: 15
-    effects: [{ type: damage, potency: 1000 }]
+    effects: [{ type: damage, potency: 200 }]
 
   arena_pulse:
     name: 震撼登场
@@ -235,7 +229,7 @@ skills:
         shape: { type: circle, radius: 99 }
         resolveDelay: 2000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 16700 }]
+        effects: [{ type: damage, potency: 3340 }]
 
   enrage:
     name: 时间的尽头

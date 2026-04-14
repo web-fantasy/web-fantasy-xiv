@@ -10,46 +10,39 @@ export const AUTO_ATTACK: SkillDef = {
   gcd: false,
   targetType: 'single',
   requiresTarget: true,
-  range: 5,
+  range: 3.5,
   mpCost: 0,
   effects: [{ type: 'damage', potency: 1 }],
 }
 
 export const DEMO_SKILLS: SkillDef[] = [
-  // 1: 单体战技
+  // 1: 近战单体战技
   {
     id: 'slash',
-    name: '斩击',
+    name: '劈砍',
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
     gcd: true,
     targetType: 'single',
     requiresTarget: true,
-    range: 5,
+    range: 4,
     mpCost: 0,
     effects: [{ type: 'damage', potency: 2 }],
   },
-  // 2: 直线射击（矩形魔法，有咏唱）
+  // 2: 远程单体战技
   {
     id: 'line_shot',
-    name: '直线射击',
-    type: 'spell',
-    castTime: 1500,
+    name: '射击',
+    type: 'weaponskill',
+    castTime: 0,
     cooldown: 0,
     gcd: true,
-    targetType: 'aoe',
+    targetType: 'single',
     requiresTarget: true,
     range: 15,
     mpCost: 0,
-    zones: [{
-      anchor: { type: 'caster' },
-      direction: { type: 'toward_target' },
-      shape: { type: 'rect', length: 12, width: 3 },
-      resolveDelay: 1500,
-      hitEffectDuration: 300,
-      effects: [{ type: 'damage', potency: 3 }],
-    }],
+    effects: [{ type: 'damage', potency: 1 }],
   },
   // 3: 扇形战技
   {

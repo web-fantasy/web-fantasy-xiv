@@ -3,22 +3,22 @@ import { calcDash, calcBackstep, calcKnockback, calcPull } from '@/combat/displa
 import type { Vec2 } from '@/core/types'
 
 describe('calcDash', () => {
-  it('should move to 1m from target', () => {
-    const result = calcDash({ x: 0, y: 0 }, { x: 10, y: 0 })
-    expect(result.x).toBeCloseTo(9)
+  it('should move to (autoAttackRange - 0.1) from target', () => {
+    const result = calcDash({ x: 0, y: 0 }, { x: 10, y: 0 }, 3.5)
+    expect(result.x).toBeCloseTo(6.6) // 10 - 3.4
     expect(result.y).toBeCloseTo(0)
   })
 
-  it('should not move if already within 1m', () => {
-    const result = calcDash({ x: 0, y: 0 }, { x: 0.5, y: 0 })
+  it('should not move if already within stop distance', () => {
+    const result = calcDash({ x: 0, y: 0 }, { x: 3, y: 0 }, 3.5)
     expect(result.x).toBeCloseTo(0)
     expect(result.y).toBeCloseTo(0)
   })
 
   it('should work diagonally', () => {
-    const result = calcDash({ x: 0, y: 0 }, { x: 10, y: 10 })
+    const result = calcDash({ x: 0, y: 0 }, { x: 10, y: 10 }, 3.5)
     const dist = Math.sqrt((result.x - 10) ** 2 + (result.y - 10) ** 2)
-    expect(dist).toBeCloseTo(1)
+    expect(dist).toBeCloseTo(3.4)
   })
 })
 

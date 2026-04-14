@@ -25,11 +25,6 @@ entities:
     targetable: true
 
 player:
-  hp: 50000
-  attack: 1000
-  speed: 6
-  size: 0.5
-  autoAttackRange: 5
   position: { x: -5, y: 0, z: 0 }
 
 boss_ai:
@@ -106,7 +101,7 @@ local_skills:
     targetType: single
     requiresTarget: true
     range: 15
-    effects: [{ type: damage, potency: 500 }]
+    effects: [{ type: damage, potency: 100 }]
 
   enrage:
     name: 時間切迫

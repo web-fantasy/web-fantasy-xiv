@@ -77,14 +77,14 @@ export function parseEncounterYaml(yamlText: string): EncounterData {
 
   // Player overrides (always from top-level player: for now)
   const player: Partial<CreateEntityOptions> = {
-    hp: raw.player?.hp ?? 30000,
-    maxHp: raw.player?.hp ?? 30000,
-    mp: raw.player?.mp ?? 0,
-    maxMp: raw.player?.mp ?? 0,
+    hp: raw.player?.hp ?? 10000,
+    maxHp: raw.player?.hp ?? 10000,
+    mp: raw.player?.mp ?? 10000,
+    maxMp: raw.player?.mp ?? 10000,
     attack: raw.player?.attack ?? 1000,
-    speed: raw.player?.speed ?? 6,
+    speed: raw.player?.speed ?? 5,
     size: raw.player?.size ?? 0.5,
-    autoAttackRange: raw.player?.autoAttackRange ?? 5,
+    autoAttackRange: raw.player?.autoAttackRange ?? 3.5,
     position: raw.player?.position,
   }
 
