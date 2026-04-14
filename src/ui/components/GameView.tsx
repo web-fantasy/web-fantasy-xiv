@@ -15,7 +15,6 @@ import { CombatAnnounce } from './CombatAnnounce'
 import { PauseMenu } from './PauseMenu'
 import { BattleEndOverlay } from './BattleEndOverlay'
 import { DebugInfo } from './DebugInfo'
-import { Tooltip } from './Tooltip'
 
 export function GameView() {
   const { params } = useRoute()
@@ -29,33 +28,35 @@ export function GameView() {
     const base = import.meta.env.BASE_URL
     const encounterUrl = `${base}encounters/${id}.yaml`
 
-    // Set skill bar + buff defs for UI components
+    // Set skill bar + buff defs for HUD
     skillBarEntriesSignal.value = DEMO_SKILL_BAR
-    buffDefsSignal.value = DEMO_BUFF_MAP
+    buffDefsSignal.value = DEMO_BUFF_MAP as any
 
-    startTimelineDemo(canvas!, uiRoot, encounterUrl)
-
-    const scene = getActiveScene()
     let adapter: ReturnType<typeof createStateAdapter> | null = null
+    let active = true
 
-    if (scene) {
-      adapter = createStateAdapter({
-        bus: scene.bus,
-        sceneManager: scene.sceneManager,
-        buffSystem: scene.buffSystem,
-      })
-
-      scene.onRenderTick = (_delta) => {
-        const bossForUI = scene.bossEntity ?? scene.player
-        adapter!.writeFrame(
-          scene.player,
-          bossForUI,
-          (sid) => scene.skillResolver.getCooldown(scene.player.id, sid),
-        )
+    startTimelineDemo(canvas!, uiRoot, encounterUrl).then(() => {
+      if (!active) return
+      const scene = getActiveScene()
+      if (scene) {
+        adapter = createStateAdapter({
+          bus: scene.bus,
+          sceneManager: scene.sceneManager,
+          buffSystem: scene.buffSystem,
+        })
+        scene.onRenderTick = (delta) => {
+          const bossForUI = scene.bossEntity ?? scene.player
+          adapter!.writeFrame(
+            scene.player,
+            bossForUI,
+            (sid) => scene.skillResolver.getCooldown(scene.player.id, sid),
+          )
+        }
       }
-    }
+    })
 
     return () => {
+      active = false
       adapter?.dispose()
       disposeActiveScene()
       resetState()
@@ -65,7 +66,10 @@ export function GameView() {
   const handleRetry = () => setGameKey((k) => k + 1)
 
   return (
-    <div ref={uiRef} class="absolute inset-0" style={{ pointerEvents: 'none' }}>
+    <div
+      ref={uiRef}
+      style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
+    >
       <BossHpBar />
       <PlayerHpBar />
       <PlayerMpBar />
@@ -78,7 +82,6 @@ export function GameView() {
       <PauseMenu onRetry={handleRetry} />
       <BattleEndOverlay onRetry={handleRetry} />
       <DebugInfo />
-      <Tooltip />
     </div>
   )
 }

@@ -6,8 +6,7 @@ import { TimelineDisplay } from '@/ui/timeline-display'
 import { loadEncounter } from '@/game/encounter-loader'
 import { DeathZoneManager } from '@/arena/death-zone-manager'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
-import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
-import { DEMO_SKILL_BAR } from './demo-skill-bar'
+import { DEMO_BUFFS } from './demo-buffs'
 import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSignal } from '@/ui/state'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
@@ -131,12 +130,19 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
         battleResult.value = 'victory'
       }
     }
-    // Check player dead (handled by watchPlayerDeath via signal)
+    // Check player dead
+    if (payload.target.id === s.player.id && payload.target.hp <= 0) {
+      if (!s.battleOver) {
+        s.battleOver = true
+        s.bus.emit('combat:ended', { result: 'wipe' })
+        battleResult.value = 'wipe'
+      }
+    }
     // Mob death: destroy entity when hp reaches 0
     if (payload.target.type === 'mob' && payload.target.hp <= 0 && payload.target.alive) {
       s.entityMgr.destroy(payload.target.id)
     }
-    // Damage log for death recap
+    // Damage log for death recap HUD
     if (payload.target.id === s.player.id && payload.amount > 0) {
       const elapsed = combatStarted ? scheduler.combatElapsed : 0
       const mitigations = s.buffSystem.getMitigations(payload.target)
@@ -256,6 +262,9 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
         },
       })
       scheduler.update(dt)
+      combatElapsedSignal.value = scheduler.combatElapsed
+    } else {
+      combatElapsedSignal.value = null
     }
 
     // Falling animation (triggered by death zone / out of bounds)
@@ -317,10 +326,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     }
 
     timelineDisplay.update(dt)
-
-    combatElapsedSignal.value = combatStarted ? scheduler.combatElapsed : null
   }
 
-  s.watchPlayerDeath()
   s.start()
 }

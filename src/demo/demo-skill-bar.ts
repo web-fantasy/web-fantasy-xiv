@@ -1,4 +1,4 @@
-import type { SkillBarEntry } from '@/ui/ui-manager'
+import type { SkillBarEntry } from '@/ui/state'
 import { DEMO_SKILLS, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 
 /** Standard skill bar layout for all demo scenes */
