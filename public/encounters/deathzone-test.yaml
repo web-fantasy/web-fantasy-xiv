@@ -112,7 +112,7 @@ timeline:
     entity: boss
     value: true
 
-  # 30s enrage
-  - at: 30000
+  # 15s 狂暴，因为读条5s，所以在15s时才真正释放
+  - at: 10000
     use: enrage_knockback
     entity: boss
