@@ -271,7 +271,8 @@ export class GameScene {
       this.gameLoop.tick(delta)
 
       const camPos = this.camera.update(delta)
-      this.sceneManager.setCameraTarget(camPos.x, camPos.y)
+      const fallOffset = (this.player as any)?._fallOffset ?? 0
+      this.sceneManager.setCameraTarget(camPos.x, camPos.y, fallOffset)
       this.entityRenderer.updateAll(this.entityMgr.getAlive(), this.player?.target)
       this.aoeRenderer.update(now)
       this.hitEffectRenderer.update(delta, (id) => this.entityMgr.get(id))

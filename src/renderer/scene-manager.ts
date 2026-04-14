@@ -30,8 +30,8 @@ export class SceneManager {
   }
 
   /** Set camera target directly (used by CameraController) */
-  setCameraTarget(x: number, y: number): void {
-    this.camera.target.set(x, 0, y)
+  setCameraTarget(x: number, y: number, heightOffset = 0): void {
+    this.camera.target.set(x, -heightOffset, y)
   }
 
   startRenderLoop(onBeforeRender: () => void): void {
