@@ -110,6 +110,8 @@ function flattenEntry(entry: any, baseTime: number, out: TimelineAction[]): void
     out.push({ at, action: 'add_death_zone', deathZone: entry.deathZone })
   } else if (entry.action === 'remove_death_zone') {
     out.push({ at, action: 'remove_death_zone', deathZoneId: entry.deathZoneId })
+  } else if (entry.action === 'camera_roll') {
+    out.push({ at, action: 'camera_roll', angle: entry.angle, snapMs: entry.snapMs, returnMs: entry.returnMs })
   }
 
   if (entry.then) {

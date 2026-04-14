@@ -193,6 +193,11 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       case 'remove_death_zone':
         if (action.deathZoneId) deathZoneMgr.remove(action.deathZoneId)
         break
+      case 'camera_roll':
+        if (action.angle != null) {
+          s.sceneManager.rollCamera(action.angle, action.snapMs ?? 150, action.returnMs ?? 1500)
+        }
+        break
     }
   })
 

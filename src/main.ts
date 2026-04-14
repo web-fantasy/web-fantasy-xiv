@@ -32,4 +32,9 @@ new MainMenu(uiRoot, [
     description: 'Lethal boundary + inner death zone',
     callback: () => startTimelineDemo(canvas, uiRoot, `${import.meta.env.BASE_URL}encounters/deathzone-test.yaml`),
   },
+  {
+    label: 'Leviathan Test',
+    description: 'Boat arena, side slap + camera tilt',
+    callback: () => startTimelineDemo(canvas, uiRoot, `${import.meta.env.BASE_URL}encounters/leviathan-test.yaml`),
+  },
 ])

@@ -1,0 +1,269 @@
+# 利维亚桑讨伐 — 镜头演出测试
+# 船型场地（9×21），boss会消失后从侧面拍击船体
+# 玩家被迫滑行，站位不佳会掉出地图
+
+arena:
+  name: 甲板
+  shape: rect
+  width: 9
+  height: 21
+  boundary: lethal
+
+entities:
+  boss:
+    type: boss
+    group: boss
+    hp: 200000
+    attack: 1
+    speed: 0
+    size: 1.5
+    facing: 180
+    position: { x: 0, y: 5, z: 0 }
+    autoAttackRange: 5
+    aggroRange: 999
+    visible: true
+    targetable: true
+
+player:
+  hp: 50000
+  attack: 1000
+  speed: 6
+  size: 0.5
+  autoAttackRange: 5
+  position: { x: 0, y: -5, z: 0 }
+
+boss_ai:
+  chaseRange: 5
+  autoAttackRange: 15
+  autoAttackInterval: 3000
+  aggroRange: 999
+  aggroAngle: 360
+
+local_skills:
+  # 左侧拍击：从右侧发射无预兆矩形击退，把玩家推向左边
+  slap_left:
+    name: 大力拍击・左
+    type: ability
+    castTime: 0
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: position, x: 10, y: 0 }   # source on RIGHT side (off-map)
+        direction: { type: fixed, angle: 270 }       # pushes LEFT
+        shape: { type: rect, length: 30, width: 30 } # covers entire ship
+        resolveDelay: 0
+        hitEffectDuration: 100
+        effects:
+          - { type: knockback, distance: 6, source: { type: position, x: 10, y: 0 } }
+
+  # 右侧拍击：从左侧发射无预兆矩形击退，把玩家推向右边
+  slap_right:
+    name: 大力拍击・右
+    type: ability
+    castTime: 0
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: position, x: -10, y: 0 }
+        direction: { type: fixed, angle: 90 }
+        shape: { type: rect, length: 30, width: 30 }
+        resolveDelay: 0
+        hitEffectDuration: 100
+        effects:
+          - { type: knockback, distance: 6, source: { type: position, x: -10, y: 0 } }
+
+  # 咏唱用的假技能（给读条条看）
+  cast_slap_left:
+    name: 大力拍击
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones: []
+
+  cast_slap_right:
+    name: 大力拍击
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones: []
+
+  boss_auto:
+    name: 攻撃
+    type: ability
+    targetType: single
+    requiresTarget: true
+    range: 15
+    effects: [{ type: damage, potency: 500 }]
+
+  enrage:
+    name: 時間切迫
+    type: spell
+    castTime: 10000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 99 }
+        resolveDelay: 10000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 999999 }]
+
+skills: {}
+
+timeline:
+  # Phase 0: boss追击平A (0-8s)
+  - at: 0
+    action: enable_ai
+
+  # Phase 1: 第一次拍击 — 左侧 (8s)
+  - at: 8000
+    action: disable_ai
+  - at: 8000
+    action: set_targetable
+    entity: boss
+    value: false
+  - at: 8500
+    action: set_visible
+    entity: boss
+    value: false
+
+  # Boss appears briefly on the left edge
+  - at: 9500
+    action: teleport
+    entity: boss
+    position: { x: -7, y: 0 }
+  - at: 9500
+    action: lock_facing
+    entity: boss
+    facing: 90
+  - at: 9500
+    action: set_visible
+    entity: boss
+    value: true
+
+  # Cast bar: "大力拍击"
+  - at: 10000
+    use: cast_slap_left
+    entity: boss
+
+  # At cast complete (13s): knockback from right + camera roll left
+  - at: 13000
+    use: slap_left
+    entity: boss
+  - at: 13000
+    action: camera_roll
+    angle: -15
+    snapMs: 150
+    returnMs: 2000
+
+  # Boss disappears, returns to center
+  - at: 13500
+    action: set_visible
+    entity: boss
+    value: false
+  - at: 14500
+    action: teleport
+    entity: boss
+    position: { x: 0, y: 5 }
+  - at: 14500
+    action: lock_facing
+    entity: boss
+    facing: 180
+  - at: 15000
+    action: set_visible
+    entity: boss
+    value: true
+  - at: 15000
+    action: set_targetable
+    entity: boss
+    value: true
+  - at: 15000
+    action: enable_ai
+
+  # Phase 2: 追击 (15-23s)
+
+  # Phase 3: 第二次拍击 — 右侧 (23s)
+  - at: 23000
+    action: disable_ai
+  - at: 23000
+    action: set_targetable
+    entity: boss
+    value: false
+  - at: 23500
+    action: set_visible
+    entity: boss
+    value: false
+
+  - at: 24500
+    action: teleport
+    entity: boss
+    position: { x: 7, y: 0 }
+  - at: 24500
+    action: lock_facing
+    entity: boss
+    facing: 270
+  - at: 24500
+    action: set_visible
+    entity: boss
+    value: true
+
+  - at: 25000
+    use: cast_slap_right
+    entity: boss
+
+  # Knockback from left + camera roll right
+  - at: 28000
+    use: slap_right
+    entity: boss
+  - at: 28000
+    action: camera_roll
+    angle: 15
+    snapMs: 150
+    returnMs: 2000
+
+  # Boss returns
+  - at: 28500
+    action: set_visible
+    entity: boss
+    value: false
+  - at: 29500
+    action: teleport
+    entity: boss
+    position: { x: 0, y: 5 }
+  - at: 29500
+    action: lock_facing
+    entity: boss
+    facing: 180
+  - at: 30000
+    action: set_visible
+    entity: boss
+    value: true
+  - at: 30000
+    action: set_targetable
+    entity: boss
+    value: true
+  - at: 30000
+    action: enable_ai
+
+  # Enrage at 60s
+  - at: 55000
+    action: disable_ai
+  - at: 55000
+    action: teleport
+    entity: boss
+    position: { x: 0, y: 5 }
+  - at: 55000
+    action: lock_facing
+    entity: boss
+    facing: 180
+  - at: 55500
+    use: enrage
+    entity: boss
