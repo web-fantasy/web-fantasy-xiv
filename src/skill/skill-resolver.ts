@@ -62,8 +62,24 @@ export class SkillResolver {
     // Independent cooldown check
     if (skill.cooldown > 0 && this.getCooldown(caster.id, skill.id) > 0) return false
 
-    // MP check
-    if (skill.mpCost > 0 && caster.mp < skill.mpCost) return false
+    // MP check (buff can absorb cost)
+    const mpAbsorbed = skill.mpCost > 0
+      && skill.mpCostAbsorbBuff
+      && this.buffSystem.hasBuff(caster, skill.mpCostAbsorbBuff)
+    if (skill.mpCost > 0 && !mpAbsorbed && caster.mp < skill.mpCost) return false
+
+    // Required buffs check
+    if (skill.requiresBuffs && skill.requiresBuffs.length > 0) {
+      for (const buffId of skill.requiresBuffs) {
+        if (!this.buffSystem.hasBuff(caster, buffId)) return false
+      }
+    }
+
+    // Required buff stacks check
+    if (skill.requiresBuffStacks) {
+      const { buffId, stacks } = skill.requiresBuffStacks
+      if (this.buffSystem.getStacks(caster, buffId) < stacks) return false
+    }
 
     // Target check
     if (skill.requiresTarget) {
@@ -72,14 +88,27 @@ export class SkillResolver {
       if (skill.range > 0 && distance(caster.position, target.position) > skill.range) return false
     }
 
+    // Resolve actual cast time (may be overridden by buff, then reduced by haste)
+    let actualCastTime = skill.castTime
+    if (skill.castTimeWithBuff && this.buffSystem.hasBuff(caster, skill.castTimeWithBuff.buffId)) {
+      actualCastTime = skill.castTimeWithBuff.castTime
+      if (skill.castTimeWithBuff.consumeStack) {
+        this.buffSystem.removeStacks(caster, skill.castTimeWithBuff.buffId, 1)
+      }
+    }
+    const haste = this.buffSystem.getHaste(caster)
+    if (haste > 0 && actualCastTime > 0) {
+      actualCastTime = Math.round(actualCastTime * (1 - haste))
+    }
+
     // Execute
-    if (skill.type === 'spell' && skill.castTime > 0) {
-      return this.startCast(caster, skill)
+    if (skill.type === 'spell' && actualCastTime > 0) {
+      return this.startCast(caster, skill, actualCastTime)
     }
     return this.resolveImmediate(caster, skill)
   }
 
-  private startCast(caster: Entity, skill: SkillDef): boolean {
+  private startCast(caster: Entity, skill: SkillDef, actualCastTime?: number): boolean {
     // Auto-face target when starting a cast
     if (caster.target && skill.requiresTarget) {
       const targetEntity = this.entityMgr.get(caster.target)
@@ -92,11 +121,11 @@ export class SkillResolver {
       skillId: skill.id,
       targetId: caster.target,
       elapsed: 0,
-      castTime: skill.castTime,
+      castTime: actualCastTime ?? skill.castTime,
     }
 
     if (skill.gcd) {
-      caster.gcdTimer = GCD_DURATION
+      caster.gcdTimer = this.getHastedGcd(caster)
     }
 
     // Spawn AoE zones immediately at cast start (telegraph shows during cast)
@@ -107,11 +136,11 @@ export class SkillResolver {
   }
 
   private resolveImmediate(caster: Entity, skill: SkillDef): boolean {
-    // Deduct MP
-    if (skill.mpCost > 0) caster.mp -= skill.mpCost
+    // Deduct MP (or absorb via buff)
+    this.deductMpCost(caster, skill)
 
     if (skill.gcd) {
-      caster.gcdTimer = GCD_DURATION
+      caster.gcdTimer = this.getHastedGcd(caster)
     }
 
     if (skill.cooldown > 0) {
@@ -230,10 +259,25 @@ export class SkillResolver {
 
     // Zones were already spawned at cast start (startCast),
     // so we only emit completion here.
-    // Deduct MP on successful cast completion
-    if (skill && skill.mpCost > 0) entity.mp -= skill.mpCost
+    // Deduct MP on successful cast completion (or absorb via buff)
+    if (skill) this.deductMpCost(entity, skill)
 
     this.bus.emit('skill:cast_complete', { caster: entity, skill })
+  }
+
+  private getHastedGcd(caster: Entity): number {
+    const haste = this.buffSystem.getHaste(caster)
+    return haste > 0 ? Math.round(caster.gcdDuration * (1 - haste)) : caster.gcdDuration
+  }
+
+  /** Deduct MP cost, or consume 1 stack of absorb buff instead */
+  private deductMpCost(caster: Entity, skill: SkillDef): void {
+    if (skill.mpCost <= 0) return
+    if (skill.mpCostAbsorbBuff && this.buffSystem.hasBuff(caster, skill.mpCostAbsorbBuff)) {
+      this.buffSystem.removeStacks(caster, skill.mpCostAbsorbBuff, 1)
+    } else {
+      caster.mp -= skill.mpCost
+    }
   }
 
   getCooldown(entityId: string, skillId: string): number {

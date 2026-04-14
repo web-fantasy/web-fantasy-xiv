@@ -40,11 +40,14 @@ export interface Entity {
   inCombat: boolean
   casting: CastState | null
   gcdTimer: number
+  gcdDuration: number       // per-entity GCD length in ms (default 2500)
   autoAttackTimer: number
 
   target: string | null
   buffs: BuffInstance[]
   skillIds: string[]
+  /** Custom per-entity data (e.g. Ley Lines center position) */
+  customData: Record<string, any>
 }
 
 export interface CreateEntityOptions {
@@ -64,6 +67,7 @@ export interface CreateEntityOptions {
   attack?: number
   autoAttackRange?: number
   aggroRange?: number
+  gcdDuration?: number
   skillIds?: string[]
 }
 
@@ -91,9 +95,11 @@ export function createEntity(opts: CreateEntityOptions): Entity {
     inCombat: false,
     casting: null,
     gcdTimer: 0,
+    gcdDuration: opts.gcdDuration ?? 2500,
     autoAttackTimer: 0,
     target: null,
     buffs: [],
     skillIds: opts.skillIds ?? [],
+    customData: {},
   }
 }

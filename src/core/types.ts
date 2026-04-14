@@ -43,7 +43,12 @@ export type SkillEffectDef =
   | { type: 'damage'; potency: number }
   | { type: 'heal'; potency: number }
   | { type: 'apply_buff'; buffId: string; stacks?: number }
-  | { type: 'dash' }                                                    // caster dashes to 1m from target
+  | { type: 'consume_buffs'; buffIds: string[] }                         // remove listed buffs from caster on resolve
+  | { type: 'consume_all_buff_stacks'; buffId: string }                  // remove all stacks of a buff
+  | { type: 'consume_buff_stacks'; buffId: string; stacks: number }      // remove N stacks from a buff
+  | { type: 'restore_mp'; percent: number }                              // restore % of max MP to caster
+  | { type: 'dash'; stopDistance?: number }                              // caster dashes toward target (stops at stopDistance or autoAttackRange)
+  | { type: 'dash_to_ley_lines' }                                       // caster dashes to ley lines center
   | { type: 'backstep'; distance: number }                              // caster jumps backward from target
   | { type: 'knockback'; distance: number; source?: DisplacementSource } // push target away from source (default: caster)
   | { type: 'pull'; distance: number; source?: DisplacementSource }      // pull target toward source (default: caster)
@@ -71,6 +76,16 @@ export interface SkillDef {
   requiresTarget: boolean  // true = must have a locked enemy target to cast
   range: number            // max cast distance (only checked when requiresTarget=true)
   mpCost: number           // MP consumed on use (0 = free)
+  /** Buff IDs that must ALL be present on caster to use this skill */
+  requiresBuffs?: string[]
+  /** Minimum stacks of a specific buff required to use this skill */
+  requiresBuffStacks?: { buffId: string; stacks: number }
+  /** Override castTime when caster has this buff; consumes 1 stack if consumeStack is true */
+  castTimeWithBuff?: { buffId: string; castTime: number; consumeStack?: boolean }
+  /** If caster has this buff, consume 1 stack instead of paying MP cost */
+  mpCostAbsorbBuff?: string
+  /** Bonus potency per stack of a buff (only affects this skill's damage effects) */
+  potencyPerStack?: { buffId: string; bonus: number }
   zones?: AoeZoneDef[]
   effects?: SkillEffectDef[]
 }
@@ -82,12 +97,15 @@ export type BuffEffectDef =
   | { type: 'dot'; potency: number; interval: number }
   | { type: 'hot'; potency: number; interval: number }
   | { type: 'vulnerability'; value: number }  // per-stack damage taken increase (additive)
+  | { type: 'haste'; value: number }    // reduce cast time, GCD, and AA interval (0.15 = 15%)
   | { type: 'silence' }
   | { type: 'stun' }
 
 export interface BuffDef {
   id: string
   name: string
+  /** Human-readable description shown in buff tooltip */
+  description?: string
   type: BuffType
   duration: number // ms, 0 = permanent
   stackable: boolean

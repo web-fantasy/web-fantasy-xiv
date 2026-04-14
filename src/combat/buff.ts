@@ -44,6 +44,26 @@ export class BuffSystem {
     this.bus.emit('buff:applied', { target: entity, buff: def, source: sourceId })
   }
 
+  hasBuff(entity: Entity, defId: string): boolean {
+    return entity.buffs.some((b) => b.defId === defId)
+  }
+
+  getStacks(entity: Entity, defId: string): number {
+    return entity.buffs.find((b) => b.defId === defId)?.stacks ?? 0
+  }
+
+  /** Remove up to `count` stacks. Returns number actually removed. Removes buff if stacks reach 0. */
+  removeStacks(entity: Entity, defId: string, count: number): number {
+    const inst = entity.buffs.find((b) => b.defId === defId)
+    if (!inst) return 0
+    const removed = Math.min(inst.stacks, count)
+    inst.stacks -= removed
+    if (inst.stacks <= 0) {
+      this.removeBuff(entity, defId, 'consumed')
+    }
+    return removed
+  }
+
   removeBuff(entity: Entity, defId: string, reason: string): void {
     const idx = entity.buffs.findIndex((b) => b.defId === defId)
     if (idx === -1) return
@@ -108,6 +128,14 @@ export class BuffSystem {
 
   isStunned(entity: Entity): boolean {
     return this.collectEffects(entity).some((e) => e.effect.type === 'stun')
+  }
+
+  /** Get total haste value (reduces cast time, GCD, AA interval). Takes highest single source. */
+  getHaste(entity: Entity): number {
+    const values = this.collectEffects(entity)
+      .filter((e) => e.effect.type === 'haste')
+      .map((e) => (e.effect as { type: 'haste'; value: number }).value)
+    return values.length > 0 ? Math.max(...values) : 0
   }
 
   getSpeedModifier(entity: Entity): number {

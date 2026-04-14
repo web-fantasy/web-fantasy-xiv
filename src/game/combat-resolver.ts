@@ -6,6 +6,7 @@ import type { Entity } from '@/entity/entity'
 import type { SkillDef, SkillEffectDef, BuffDef } from '@/core/types'
 import { calculateDamage } from '@/combat/damage'
 import { calcDash, calcBackstep, calcKnockback, calcPull } from '@/combat/displacement'
+import { EASING, type EasingFn } from './displacement-animator'
 import type { AoeZoneManager } from '@/skill/aoe-zone'
 import type { DisplacementAnimator } from './displacement-animator'
 
@@ -17,6 +18,8 @@ import type { DisplacementAnimator } from './displacement-animator'
  */
 export class CombatResolver {
   private buffDefs = new Map<string, BuffDef>()
+  private skillNames = new Map<string, string>()
+  private skillDefsMap = new Map<string, SkillDef>()
 
   constructor(
     private bus: EventBus,
@@ -29,20 +32,27 @@ export class CombatResolver {
     // Single-target skill effects
     bus.on('skill:cast_complete', (payload: { caster: Entity; skill: SkillDef | any }) => {
       const skill = payload.skill as SkillDef | undefined
-      if (!skill?.effects) return
+      if (!skill) return
+      this.skillNames.set(skill.id, skill.name)
+      this.skillDefsMap.set(skill.id, skill)
+      if (!skill.effects) return
       const caster = payload.caster
       const target = caster.target ? this.entityMgr.get(caster.target) : null
 
-      this.resolveEffects(skill.effects, caster, target)
+      const potencyBonus = this.resolvePotencyBonus(caster, skill)
+      this.resolveEffects(skill.effects, caster, target, skill.name, potencyBonus)
     })
 
     // AoE zone resolved effects
     bus.on('aoe:zone_resolved', (payload: { zone: any; hitEntities: Entity[] }) => {
       const casterId: string | null = payload.zone.casterId
       const caster = casterId ? this.entityMgr.get(casterId) : null
+      const skillName: string | undefined = this.skillNames.get(payload.zone.skillId)
+      const skillDef = this.skillDefsMap.get(payload.zone.skillId)
+      const potencyBonus = caster && skillDef ? this.resolvePotencyBonus(caster, skillDef) : 0
 
       for (const hit of payload.hitEntities) {
-        this.resolveEffects(payload.zone.def.effects, caster, hit)
+        this.resolveEffects(payload.zone.def.effects, caster, hit, skillName, potencyBonus)
       }
     })
   }
@@ -57,12 +67,14 @@ export class CombatResolver {
     effects: SkillEffectDef[],
     caster: Entity | null | undefined,
     target: Entity | null | undefined,
+    skillName?: string,
+    potencyBonus = 0,
   ): void {
     for (const effect of effects) {
       switch (effect.type) {
         case 'damage':
           if (!caster || !target) break
-          this.applyDamage(caster, target, effect.potency)
+          this.applyDamage(caster, target, effect.potency + potencyBonus, skillName)
           break
 
         case 'apply_buff': {
@@ -77,6 +89,28 @@ export class CombatResolver {
           break
         }
 
+        case 'consume_buffs':
+          if (!caster) break
+          for (const buffId of effect.buffIds) {
+            this.buffSystem.removeBuff(caster, buffId, 'consumed')
+          }
+          break
+
+        case 'consume_all_buff_stacks':
+          if (!caster) break
+          this.buffSystem.removeBuff(caster, effect.buffId, 'consumed')
+          break
+
+        case 'consume_buff_stacks':
+          if (!caster) break
+          this.buffSystem.removeStacks(caster, effect.buffId, effect.stacks)
+          break
+
+        case 'restore_mp':
+          if (!caster) break
+          caster.mp = Math.min(caster.maxMp, caster.mp + Math.floor(caster.maxMp * effect.percent))
+          break
+
         case 'heal': {
           // Heal only applies to friendly targets (same type as caster); otherwise fallback to caster
           const friendlyTarget = (target && caster && target.type === caster.type) ? target : caster
@@ -87,12 +121,20 @@ export class CombatResolver {
           break
         }
 
+        case 'dash_to_ley_lines': {
+          if (!caster) break
+          const llCenter = caster.customData.leyLinesCenter as { x: number; y: number } | undefined
+          if (!llCenter) break
+          this.applyDisplacement(caster, llCenter, 300, EASING.easeOut)
+          break
+        }
+
         case 'dash':
           if (!caster || !target) break
           this.applyDisplacement(caster, calcDash(
             { x: caster.position.x, y: caster.position.y },
             { x: target.position.x, y: target.position.y },
-            caster.autoAttackRange,
+            effect.stopDistance ?? caster.autoAttackRange,
           ))
           break
 
@@ -132,7 +174,14 @@ export class CombatResolver {
     }
   }
 
-  private applyDamage(caster: Entity, target: Entity, potency: number): void {
+  /** Calculate bonus potency from per-stack buff scaling */
+  private resolvePotencyBonus(caster: Entity, skill: SkillDef): number {
+    if (!skill.potencyPerStack) return 0
+    const stacks = this.buffSystem.getStacks(caster, skill.potencyPerStack.buffId)
+    return stacks * skill.potencyPerStack.bonus
+  }
+
+  private applyDamage(caster: Entity, target: Entity, potency: number, skillName?: string): void {
     const vulnerability = this.buffSystem.getVulnerability(target)
     const dmg = calculateDamage({
       attack: caster.attack,
@@ -141,10 +190,10 @@ export class CombatResolver {
       mitigations: this.buffSystem.getMitigations(target),
     })
     target.hp = Math.max(0, target.hp - dmg)
-    this.bus.emit('damage:dealt', { source: caster, target, amount: dmg, skill: null })
+    this.bus.emit('damage:dealt', { source: caster, target, amount: dmg, skill: skillName ? { name: skillName } : null })
   }
 
-  private applyDisplacement(entity: Entity, newPos: { x: number; y: number }): void {
+  private applyDisplacement(entity: Entity, newPos: { x: number; y: number }, duration?: number, easing?: EasingFn): void {
     const clamped = this.arena.clampToWallZones(this.arena.clampPosition(newPos))
 
     // Forced movement interrupts casting + cancels zones
@@ -157,7 +206,7 @@ export class CombatResolver {
     }
 
     if (this.displacer) {
-      this.displacer.start(entity, clamped.x, clamped.y)
+      this.displacer.start(entity, clamped.x, clamped.y, duration, easing)
     } else {
       entity.position.x = clamped.x
       entity.position.y = clamped.y

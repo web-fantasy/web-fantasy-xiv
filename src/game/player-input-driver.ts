@@ -6,6 +6,7 @@ import type { BuffSystem } from '@/combat/buff'
 import type { EntityManager } from '@/entity/entity-manager'
 import type { EventBus } from '@/core/event-bus'
 import type { Arena } from '@/arena/arena'
+import type { BuffDef } from '@/core/types'
 import type { DisplacementAnimator } from './displacement-animator'
 import { computeMoveDirection, computeFacingAngle } from '@/input/input-manager'
 
@@ -24,13 +25,19 @@ export interface PlayerInputConfig {
   extraSkills?: Map<number, SkillDef>
   autoAttackSkill?: SkillDef
   autoAttackInterval: number
+  noMpRegen?: boolean
+  passiveBuffs?: { buffId: string; interval: number; stacks: number }[]
+  /** Buff defs needed for passive buff application */
+  buffDefs?: Map<string, BuffDef>
 }
 
 export class PlayerInputDriver {
   private queuedSkill: SkillDef | null = null
   private regenTimer = 0
   private mpRegenTimer = 0
+  private passiveBuffTimers = new Map<string, number>()
   private displacer: DisplacementAnimator | null = null
+  private leyLinesCheckTimer = 0
   constructor(
     private entity: Entity,
     private input: InputManager,
@@ -40,7 +47,19 @@ export class PlayerInputDriver {
     private bus: EventBus,
     private arena: Arena,
     private config: PlayerInputConfig,
-  ) {}
+  ) {
+    // Track Ley Lines placement on entity custom data
+    this.bus.on('buff:applied', (payload: { target: any; buff: any }) => {
+      if (payload.target.id === this.entity.id && payload.buff?.id === 'blm_leylines_active') {
+        this.entity.customData.leyLinesCenter = { x: this.entity.position.x, y: this.entity.position.y }
+      }
+    })
+    this.bus.on('buff:removed', (payload: { target: any; buff: any }) => {
+      if (payload.target?.id === this.entity.id && payload.buff?.id === 'blm_leylines_active') {
+        delete this.entity.customData.leyLinesCenter
+      }
+    })
+  }
 
   setDisplacer(displacer: DisplacementAnimator): void {
     this.displacer = displacer
@@ -138,11 +157,15 @@ export class PlayerInputDriver {
       }
     }
 
-    // Auto-attack when target locked
+    // Auto-attack when target locked (haste reduces interval)
     if (p.target && p.inCombat && this.config.autoAttackSkill) {
+      const haste = this.buffSystem.getHaste(p)
+      const aaInterval = haste > 0
+        ? this.config.autoAttackInterval * (1 - haste)
+        : this.config.autoAttackInterval
       p.autoAttackTimer += dt
-      if (p.autoAttackTimer >= this.config.autoAttackInterval) {
-        p.autoAttackTimer -= this.config.autoAttackInterval
+      if (p.autoAttackTimer >= aaInterval) {
+        p.autoAttackTimer -= aaInterval
         this.skillResolver.tryUse(p, this.config.autoAttackSkill)
       }
     }
@@ -151,6 +174,7 @@ export class PlayerInputDriver {
     this.skillResolver.updateAll(dt)
     this.buffSystem.update(p, dt)
 
+    this.tickLeyLines(p, dt)
     this.tickRegen(p, dt)
 
     return null
@@ -196,6 +220,25 @@ export class PlayerInputDriver {
     return false
   }
 
+  /** Ley Lines: every 1s check if player stands inside the zone, grant 3s haste buff */
+  private tickLeyLines(p: Entity, dt: number): void {
+    const center = p.customData.leyLinesCenter as { x: number; y: number } | undefined
+    if (!center || !p.alive) return
+    this.leyLinesCheckTimer += dt
+    if (this.leyLinesCheckTimer < 1000) return
+    this.leyLinesCheckTimer -= 1000
+
+    const dx = p.position.x - center.x
+    const dy = p.position.y - center.y
+    const dist = Math.sqrt(dx * dx + dy * dy)
+    if (dist <= 3) {
+      const def = this.config.buffDefs?.get('blm_leylines_buff')
+      if (def) {
+        this.buffSystem.applyBuff(p, def, p.id)
+      }
+    }
+  }
+
   private tickRegen(p: Entity, dt: number): void {
     if (p.alive && p.hp < p.maxHp) {
       this.regenTimer += dt
@@ -206,13 +249,29 @@ export class PlayerInputDriver {
         p.hp = Math.min(p.maxHp, p.hp + heal)
       }
     }
-    if (p.alive && p.maxMp > 0 && p.mp < p.maxMp) {
+    if (!this.config.noMpRegen && p.alive && p.maxMp > 0 && p.mp < p.maxMp) {
       this.mpRegenTimer += dt
       const interval = p.inCombat ? MP_REGEN_INTERVAL : MP_REGEN_INTERVAL_IDLE
       const amount = p.inCombat ? MP_REGEN_AMOUNT : MP_REGEN_AMOUNT_IDLE
       if (this.mpRegenTimer >= interval) {
         this.mpRegenTimer -= interval
         p.mp = Math.min(p.maxMp, p.mp + amount)
+      }
+    }
+
+    // Passive buff accumulation (in combat only)
+    if (p.alive && p.inCombat && this.config.passiveBuffs) {
+      for (const pb of this.config.passiveBuffs) {
+        const timer = (this.passiveBuffTimers.get(pb.buffId) ?? 0) + dt
+        if (timer >= pb.interval) {
+          this.passiveBuffTimers.set(pb.buffId, timer - pb.interval)
+          const def = this.config.buffDefs?.get(pb.buffId)
+          if (def) {
+            this.buffSystem.applyBuff(p, def, p.id, pb.stacks)
+          }
+        } else {
+          this.passiveBuffTimers.set(pb.buffId, timer)
+        }
       }
     }
   }
