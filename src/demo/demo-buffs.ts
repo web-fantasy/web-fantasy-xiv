@@ -14,10 +14,10 @@ export const DEMO_BUFFS: Record<string, BuffDef> = {
     id: 'embolden',
     name: '攻击力提升',
     type: 'buff',
-    duration: 8000,
+    duration: 15000,
     stackable: false,
     maxStacks: 1,
-    effects: [{ type: 'damage_increase', value: 0.2 }],
+    effects: [{ type: 'damage_increase', value: 0.1 }],
   },
   rampart: {
     id: 'rampart',

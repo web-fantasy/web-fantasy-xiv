@@ -26,7 +26,7 @@ export interface PlayerInputConfig {
   autoAttackSkill?: SkillDef
   autoAttackInterval: number
   noMpRegen?: boolean
-  passiveBuffs?: { buffId: string; interval: number; stacks: number }[]
+  passiveBuffs?: { buffId: string; interval: number; stacks: number; requiresBuff?: string }[]
   /** Buff defs needed for passive buff application */
   buffDefs?: Map<string, BuffDef>
 }
@@ -262,6 +262,11 @@ export class PlayerInputDriver {
     // Passive buff accumulation (in combat only)
     if (p.alive && p.inCombat && this.config.passiveBuffs) {
       for (const pb of this.config.passiveBuffs) {
+        // Skip if required buff is not present
+        if (pb.requiresBuff && this.buffSystem.getStacks(p, pb.requiresBuff) <= 0) {
+          this.passiveBuffTimers.set(pb.buffId, 0)
+          continue
+        }
         const timer = (this.passiveBuffTimers.get(pb.buffId) ?? 0) + dt
         if (timer >= pb.interval) {
           this.passiveBuffTimers.set(pb.buffId, timer - pb.interval)

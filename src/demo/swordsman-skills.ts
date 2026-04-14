@@ -1,20 +1,5 @@
 import type { SkillDef, BuffDef } from '@/core/types'
 
-/** Samurai auto-attack: melee range */
-export const SAMURAI_AUTO_ATTACK: SkillDef = {
-  id: 'sam_auto',
-  name: '自动攻击',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 0,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 3.5,
-  mpCost: 0,
-  effects: [{ type: 'damage', potency: 1.0 }],
-}
-
 export const SAMURAI_SKILLS: SkillDef[] = [
   // 1: Setsu (Snow) — melee GCD, grants Snow buff
   {
@@ -106,51 +91,7 @@ export const SAMURAI_SKILLS: SkillDef[] = [
     mpCost: 0,
     effects: [{ type: 'damage', potency: 0.5 }],
   },
-  // 6: Cure — higher MP cost heal
-  {
-    id: 'sam_cure',
-    name: '治疗',
-    type: 'spell',
-    castTime: 1800,
-    cooldown: 0,
-    gcd: true,
-    targetType: 'single',
-    requiresTarget: false,
-    range: 0,
-    mpCost: 3200,
-    effects: [{ type: 'heal', potency: 12.5 }],
-  },
 ]
-
-/** Q key: dash to target (6s cooldown) */
-export const SAMURAI_DASH: SkillDef = {
-  id: 'sam_dash',
-  name: '突进',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 6000,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 15,
-  mpCost: 0,
-  effects: [{ type: 'dash' }],
-}
-
-/** E key: backstep (6s cooldown) */
-export const SAMURAI_BACKSTEP: SkillDef = {
-  id: 'sam_backstep',
-  name: '后跳',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 6000,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 5,
-  mpCost: 0,
-  effects: [{ type: 'backstep', distance: 10 }],
-}
 
 // --- Samurai buffs ---
 

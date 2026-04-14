@@ -1,20 +1,5 @@
 import type { SkillDef, BuffDef } from '@/core/types'
 
-/** BLM auto-attack: ranged */
-export const BLM_AUTO_ATTACK: SkillDef = {
-  id: 'blm_auto',
-  name: '自动攻击',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 0,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 3.5,
-  mpCost: 0,
-  effects: [{ type: 'damage', potency: 0.05 }],
-}
-
 export const BLM_SKILLS: SkillDef[] = [
   // 1: Fire — long cast, high MP cost, stacks Astral Fire, consumes all Umbral Ice
   {
@@ -115,25 +100,10 @@ export const BLM_SKILLS: SkillDef[] = [
     targetType: 'single',
     requiresTarget: false,
     range: 0,
-    mpCost: 3200,
-    effects: [{ type: 'heal', potency: 12.5 }],
+    mpCost: 2400,
+    effects: [{ type: 'heal', potency: 6 }],
   },
 ]
-
-/** Q key: dash to target (stops at 3m, not autoAttackRange) */
-export const BLM_DASH: SkillDef = {
-  id: 'blm_dash',
-  name: '突进',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 10000,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 20,
-  mpCost: 0,
-  effects: [{ type: 'dash' }],
-}
 
 /** E key: Ley Lines dash — dash to ley lines center (requires active Ley Lines) */
 export const BLM_LEYLINE_STEP: SkillDef = {

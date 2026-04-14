@@ -1,20 +1,5 @@
 import type { SkillDef } from '@/core/types'
 
-/** Auto-attack: ability type, no GCD, used by auto-attack timer only */
-export const AUTO_ATTACK: SkillDef = {
-  id: 'auto_attack',
-  name: '自动攻击',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 0,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 3.5,
-  mpCost: 0,
-  effects: [{ type: 'damage', potency: 1 }],
-}
-
 export const DEMO_SKILLS: SkillDef[] = [
   // 1: 近战单体战技
   {
@@ -28,7 +13,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     requiresTarget: true,
     range: 4,
     mpCost: 0,
-    effects: [{ type: 'damage', potency: 2 }],
+    effects: [{ type: 'damage', potency: 1.5 }],
   },
   // 2: 远程单体战技
   {
@@ -62,10 +47,10 @@ export const DEMO_SKILLS: SkillDef[] = [
       shape: { type: 'fan', radius: 8, angle: 90 },
       resolveDelay: 0,
       hitEffectDuration: 300,
-      effects: [{ type: 'damage', potency: 1.5 }],
+      effects: [{ type: 'damage', potency: 0.6 }],
     }],
   },
-  // 4: 强化（增伤20%，8s）
+  // 4: 强化（增伤10%，15s）
   {
     id: 'embolden',
     name: '强化',
@@ -105,34 +90,6 @@ export const DEMO_SKILLS: SkillDef[] = [
     requiresTarget: false,
     range: 0,
     mpCost: 2400,
-    effects: [{ type: 'heal', potency: 12.5 }],
+    effects: [{ type: 'heal', potency: 6 }],
   },
 ]
-
-/** Q key: dash to target */
-export const SKILL_DASH: SkillDef = {
-  id: 'dash',
-  name: '突进',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 10000,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 15,
-  mpCost: 0,
-  effects: [{ type: 'dash' }],
-}
-
-/** E key: backstep away from target */
-export const SKILL_BACKSTEP: SkillDef = {
-  id: 'backstep',
-  name: '后跳',
-  type: 'ability',
-  castTime: 0,
-  cooldown: 10000,
-  gcd: false,
-  targetType: 'single',
-  requiresTarget: true,
-  range: 5,  mpCost: 0,  effects: [{ type: 'backstep', distance: 10 }],
-}

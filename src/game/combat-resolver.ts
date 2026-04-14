@@ -138,6 +138,16 @@ export class CombatResolver {
           ))
           break
 
+        case 'dash_forward': {
+          if (!caster) break
+          const rad = (caster.facing * Math.PI) / 180
+          this.applyDisplacement(caster, {
+            x: caster.position.x + Math.sin(rad) * effect.distance,
+            y: caster.position.y + Math.cos(rad) * effect.distance,
+          })
+          break
+        }
+
         case 'backstep':
           if (!caster || !target) break
           this.applyDisplacement(caster, calcBackstep(

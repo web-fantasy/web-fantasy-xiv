@@ -48,6 +48,7 @@ export type SkillEffectDef =
   | { type: 'consume_buff_stacks'; buffId: string; stacks: number }      // remove N stacks from a buff
   | { type: 'restore_mp'; percent: number }                              // restore % of max MP to caster
   | { type: 'dash'; stopDistance?: number }                              // caster dashes toward target (stops at stopDistance or autoAttackRange)
+  | { type: 'dash_forward'; distance: number }                          // caster dashes forward (toward facing direction)
   | { type: 'dash_to_ley_lines' }                                       // caster dashes to ley lines center
   | { type: 'backstep'; distance: number }                              // caster jumps backward from target
   | { type: 'knockback'; distance: number; source?: DisplacementSource } // push target away from source (default: caster)

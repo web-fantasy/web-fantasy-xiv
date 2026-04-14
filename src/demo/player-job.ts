@@ -1,14 +1,13 @@
 import type { SkillDef, BuffDef } from '@/core/types'
 import type { SkillBarEntry } from '@/ui/state'
-import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import {
-  SAMURAI_SKILLS, SAMURAI_AUTO_ATTACK, SAMURAI_DASH, SAMURAI_BACKSTEP,
-  SAMURAI_BUFFS, SAMURAI_BUFF_MAP,
-} from './swordsman-skills'
-import {
-  BLM_SKILLS, BLM_AUTO_ATTACK, BLM_DASH, BLM_LEYLINE_STEP,
-  BLM_BUFFS, BLM_BUFF_MAP,
-} from './blm-skills'
+  MELEE_AUTO, PHYS_RANGED_AUTO, CASTER_AUTO,
+  ROLE_DASH, ROLE_DASH_FORWARD, ROLE_BACKSTEP, ROLE_SECOND_WIND,
+} from './role-skills'
+import { DEMO_SKILLS } from './demo-skills'
+import { SAMURAI_SKILLS, SAMURAI_BUFFS, SAMURAI_BUFF_MAP } from './swordsman-skills'
+import { BLM_SKILLS, BLM_LEYLINE_STEP, BLM_BUFFS, BLM_BUFF_MAP } from './blm-skills'
+import { BRD_SKILLS, BRD_BUFFS, BRD_BUFF_MAP } from './bard-skills'
 import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
 
 /** Job category — matches icon filenames in public/assets/images/class_jobs/ */
@@ -63,8 +62,20 @@ export interface PlayerJob {
   buffs: Record<string, BuffDef>
   buffMap: Map<string, BuffDef>
   /** Buffs that passively accumulate during combat */
-  passiveBuffs?: { buffId: string; interval: number; stacks: number }[]
+  passiveBuffs?: { buffId: string; interval: number; stacks: number; requiresBuff?: string }[]
 }
+
+// ─── Helper ──────────────────────────────────────────────
+
+function buildSkillBar(skills: SkillDef[], q: SkillDef, e: SkillDef): SkillBarEntry[] {
+  return [
+    ...skills.map((s, i) => ({ key: `${i + 1}`, skill: s })),
+    { key: 'Q', skill: q },
+    { key: 'E', skill: e },
+  ]
+}
+
+// ─── Jobs ────────────────────────────────────────────────
 
 export const DEFAULT_JOB: PlayerJob = {
   id: 'default',
@@ -79,14 +90,10 @@ export const DEFAULT_JOB: PlayerJob = {
     autoAttackRange: 3.5,
   },
   skills: DEMO_SKILLS,
-  extraSkills: new Map([[100, SKILL_DASH], [101, SKILL_BACKSTEP]]),
-  autoAttackSkill: AUTO_ATTACK,
+  extraSkills: new Map([[100, ROLE_DASH], [101, ROLE_BACKSTEP]]),
+  autoAttackSkill: MELEE_AUTO,
   autoAttackInterval: 3000,
-  skillBar: [
-    ...DEMO_SKILLS.map((s, i) => ({ key: `${i + 1}`, skill: s })),
-    { key: 'Q', skill: SKILL_DASH },
-    { key: 'E', skill: SKILL_BACKSTEP },
-  ],
+  skillBar: buildSkillBar(DEMO_SKILLS, ROLE_DASH, ROLE_BACKSTEP),
   buffs: DEMO_BUFFS,
   buffMap: DEMO_BUFF_MAP,
 }
@@ -104,15 +111,11 @@ export const SAMURAI_JOB: PlayerJob = {
     autoAttackRange: 3.5,
     gcdDuration: 2350,
   },
-  skills: SAMURAI_SKILLS,
-  extraSkills: new Map([[100, SAMURAI_DASH], [101, SAMURAI_BACKSTEP]]),
-  autoAttackSkill: SAMURAI_AUTO_ATTACK,
+  skills: [...SAMURAI_SKILLS, ROLE_SECOND_WIND],
+  extraSkills: new Map([[100, ROLE_DASH], [101, ROLE_BACKSTEP]]),
+  autoAttackSkill: MELEE_AUTO,
   autoAttackInterval: 2800,
-  skillBar: [
-    ...SAMURAI_SKILLS.map((s, i) => ({ key: `${i + 1}`, skill: s })),
-    { key: 'Q', skill: SAMURAI_DASH },
-    { key: 'E', skill: SAMURAI_BACKSTEP },
-  ],
+  skillBar: buildSkillBar([...SAMURAI_SKILLS, ROLE_SECOND_WIND], ROLE_DASH, ROLE_BACKSTEP),
   buffs: SAMURAI_BUFFS,
   buffMap: SAMURAI_BUFF_MAP,
 }
@@ -131,14 +134,10 @@ export const BLM_JOB: PlayerJob = {
     noMpRegen: true,
   },
   skills: BLM_SKILLS,
-  extraSkills: new Map([[100, BLM_DASH], [101, BLM_LEYLINE_STEP]]),
-  autoAttackSkill: BLM_AUTO_ATTACK,
+  extraSkills: new Map([[100, ROLE_DASH], [101, BLM_LEYLINE_STEP]]),
+  autoAttackSkill: CASTER_AUTO,
   autoAttackInterval: 3000,
-  skillBar: [
-    ...BLM_SKILLS.map((s, i) => ({ key: `${i + 1}`, skill: s })),
-    { key: 'Q', skill: BLM_DASH },
-    { key: 'E', skill: BLM_LEYLINE_STEP },
-  ],
+  skillBar: buildSkillBar(BLM_SKILLS, ROLE_DASH, BLM_LEYLINE_STEP),
   buffs: BLM_BUFFS,
   buffMap: BLM_BUFF_MAP,
   passiveBuffs: [
@@ -146,8 +145,33 @@ export const BLM_JOB: PlayerJob = {
   ],
 }
 
+export const BRD_JOB: PlayerJob = {
+  id: 'brd',
+  name: '吟游诗人',
+  description: '远程物理职业。通过切换三首战歌强化自身，在放浪神的小步舞曲期间积攒诗心，释放完美音调造成高额伤害。',
+  category: JobCategory.PhysRanged,
+  stats: {
+    hp: 9500,
+    mp: 10000,
+    attack: 1000,
+    speed: 5,
+    autoAttackRange: 10,
+    gcdDuration: 2300,
+  },
+  skills: [...BRD_SKILLS, ROLE_SECOND_WIND],
+  extraSkills: new Map([[100, ROLE_DASH_FORWARD], [101, ROLE_BACKSTEP]]),
+  autoAttackSkill: PHYS_RANGED_AUTO,
+  autoAttackInterval: 3000,
+  skillBar: buildSkillBar([...BRD_SKILLS, ROLE_SECOND_WIND], ROLE_DASH_FORWARD, ROLE_BACKSTEP),
+  buffs: BRD_BUFFS,
+  buffMap: BRD_BUFF_MAP,
+  passiveBuffs: [
+    { buffId: 'brd_pitch', interval: 1000, stacks: 1, requiresBuff: 'brd_minuet' },
+  ],
+}
+
 /** All available jobs */
-export const JOBS: PlayerJob[] = [DEFAULT_JOB, SAMURAI_JOB, BLM_JOB]
+export const JOBS: PlayerJob[] = [DEFAULT_JOB, SAMURAI_JOB, BLM_JOB, BRD_JOB]
 
 export function getJob(id: string): PlayerJob {
   return JOBS.find(j => j.id === id) ?? DEFAULT_JOB
