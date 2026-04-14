@@ -92,7 +92,7 @@ export class SceneManager {
 
       // Build a rotation around the camera's forward axis (Z in view space)
       const rollRad = (this.rollAngle * Math.PI) / 180
-      const rollMatrix = Matrix.RotationZ(rollRad)
+      const rollMatrix = Matrix.RotationZ(-rollRad)
 
       // Post-multiply: view × roll
       return view.multiply(rollMatrix)
