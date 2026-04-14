@@ -185,9 +185,7 @@ skills:
     targetType: aoe
     zones:
       # Vertical (N→S)
-      - anchor: { type: position, x: 0, y: 15 }
-        direction: { type: fixed, angle: 180 }
-        shape: { type: rect, length: 30, width: 4 }
+      - shape: { type: rect, from: { x: 0, y: 15 }, to: { x: 0, y: -15 }, width: 4 }
         resolveDelay: 5000
         telegraphBefore: 3000
         hitEffectDuration: 500
@@ -195,9 +193,7 @@ skills:
           - { type: damage, potency: 20000 }
           - { type: apply_buff, buffId: vulnerability, stacks: 10 }
       # Horizontal (W→E)
-      - anchor: { type: position, x: -15, y: 0 }
-        direction: { type: fixed, angle: 90 }
-        shape: { type: rect, length: 30, width: 4 }
+      - shape: { type: rect, from: { x: -15, y: 0 }, to: { x: 15, y: 0 }, width: 4 }
         resolveDelay: 5000
         telegraphBefore: 3000
         hitEffectDuration: 500

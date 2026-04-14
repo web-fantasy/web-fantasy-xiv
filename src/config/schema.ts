@@ -70,10 +70,25 @@ export function parseSkillConfig(raw: any): SkillDef {
 }
 
 function parseZone(raw: any): AoeZoneDef {
+  let { anchor, direction, shape } = raw
+
+  // Rect sugar: { type: rect, from: {x,y}, to: {x,y}, width }
+  // Normalized to anchor + direction + shape(length, width)
+  if (shape?.type === 'rect' && shape.from && shape.to) {
+    const dx = shape.to.x - shape.from.x
+    const dy = shape.to.y - shape.from.y
+    const length = Math.sqrt(dx * dx + dy * dy)
+    const angle = ((Math.atan2(dx, dy) * 180) / Math.PI + 360) % 360
+
+    anchor = { type: 'position', x: shape.from.x, y: shape.from.y }
+    direction = { type: 'fixed', angle }
+    shape = { type: 'rect', length, width: shape.width }
+  }
+
   return {
-    anchor: raw.anchor,
-    direction: raw.direction,
-    shape: raw.shape,
+    anchor,
+    direction,
+    shape,
     resolveDelay: raw.resolveDelay ?? 0,
     telegraphBefore: raw.telegraphBefore,
     hitEffectDuration: raw.hitEffectDuration ?? 500,
