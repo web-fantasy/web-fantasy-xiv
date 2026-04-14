@@ -5,7 +5,8 @@ export const SAMURAI_SKILLS: SkillDef[] = [
   // 1: Setsu (Snow) — melee GCD, grants Snow buff
   {
     id: 'sam_setsu',
-    name: '雪',
+    name: '雪风',
+    icon: icon('skill_icons/34_SAM', 3166),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -22,7 +23,8 @@ export const SAMURAI_SKILLS: SkillDef[] = [
   // 2: Getsu (Moon) — melee GCD, grants Moon buff
   {
     id: 'sam_getsu',
-    name: '月',
+    name: '月光',
+    icon: icon('skill_icons/34_SAM', 3158),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -39,7 +41,8 @@ export const SAMURAI_SKILLS: SkillDef[] = [
   // 3: Ka (Flower) — melee GCD, grants Flower buff
   {
     id: 'sam_ka',
-    name: '花',
+    name: '花车',
+    icon: icon('skill_icons/34_SAM', 3164),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -57,6 +60,7 @@ export const SAMURAI_SKILLS: SkillDef[] = [
   {
     id: 'sam_midare',
     name: '纷乱雪月花',
+    icon: icon('skill_icons/34_SAM', 3162),
     type: 'spell',
     castTime: 800,
     cooldown: 0,
@@ -82,6 +86,7 @@ export const SAMURAI_SKILLS: SkillDef[] = [
   {
     id: 'sam_enpi',
     name: '燕飞',
+    icon: icon('skill_icons/34_SAM', 3155),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,

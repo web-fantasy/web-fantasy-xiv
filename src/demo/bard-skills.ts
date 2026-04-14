@@ -6,6 +6,7 @@ export const BRD_SKILLS: SkillDef[] = [
   {
     id: 'brd_straight_shot',
     name: '直线射击',
+    icon: icon('skill_icons/23_BRD', 359),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -20,6 +21,7 @@ export const BRD_SKILLS: SkillDef[] = [
   {
     id: 'brd_ballad',
     name: '贤者的叙事谣',
+    icon: icon('skill_icons/23_BRD', 2602),
     type: 'ability',
     castTime: 0,
     cooldown: 60000,
@@ -37,6 +39,7 @@ export const BRD_SKILLS: SkillDef[] = [
   {
     id: 'brd_paeon',
     name: '军神的赞美歌',
+    icon: icon('skill_icons/23_BRD', 2603),
     type: 'ability',
     castTime: 0,
     cooldown: 60000,
@@ -54,6 +57,7 @@ export const BRD_SKILLS: SkillDef[] = [
   {
     id: 'brd_minuet',
     name: '放浪神的小步舞曲',
+    icon: icon('skill_icons/23_BRD', 2607),
     type: 'ability',
     castTime: 0,
     cooldown: 60000,
@@ -71,6 +75,7 @@ export const BRD_SKILLS: SkillDef[] = [
   {
     id: 'brd_pitch_perfect',
     name: '完美音调',
+    icon: icon('skill_icons/23_BRD', 2611),
     type: 'ability',
     castTime: 0,
     cooldown: 0,

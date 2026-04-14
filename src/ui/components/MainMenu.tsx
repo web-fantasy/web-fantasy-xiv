@@ -281,16 +281,28 @@ function CompactSkillRow({ keyLabel, skill, buffDefs, gcdDuration }: {
       padding: '4px 6px',
       borderBottom: '1px solid rgba(255,255,255,0.04)',
     }}>
-      <span style={{
-        width: 22, height: 22, flexShrink: 0,
+      <div style={{
+        width: 36, height: 36, flexShrink: 0,
+        position: 'relative',
         background: 'rgba(0,0,0,0.5)',
         border: '1px solid rgba(255,255,255,0.2)',
         borderRadius: 3,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 10, color: 'rgba(255,255,255,0.4)',
+        overflow: 'hidden',
       }}>
-        {keyLabel}
-      </span>
+        {skill.icon
+          ? <img src={skill.icon} style={{ width: 36, height: 36, objectFit: 'contain' }} />
+          : <span style={{ fontSize: 10, color: '#888' }}>{skill.name.slice(0, 3)}</span>
+        }
+        <span style={{
+          position: 'absolute', top: 1, left: 3,
+          fontSize: 9, color: 'rgba(255,255,255,0.5)',
+          textShadow: '0 0 2px #000, 0 0 2px #000',
+          lineHeight: 1,
+        }}>
+          {keyLabel}
+        </span>
+      </div>
       <div
         style={{ fontSize: 11, lineHeight: 1.5, color: '#bbb', flex: 1 }}
         dangerouslySetInnerHTML={{ __html: html }}

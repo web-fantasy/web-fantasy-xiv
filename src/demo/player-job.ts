@@ -89,9 +89,9 @@ function buildSkillBar(skills: SkillDef[], q: SkillDef, e: SkillDef): SkillBarEn
 
 export const DEFAULT_JOB: PlayerJob = {
   id: 'default',
-  name: '冒险者',
-  description: '兼具近战、远程、治疗与增减益能力的全能型测试职业。',
-  category: JobCategory.None,
+  name: '战士',
+  description: '以巨斧作为武器，穿着金属甲胄的战斗精英。拥有相对平衡的输出、防御能力，适合新手游玩。',
+  category: JobCategory.Tank,
   stats: {
     hp: 10000,
     mp: 10000,
@@ -99,11 +99,11 @@ export const DEFAULT_JOB: PlayerJob = {
     speed: 5,
     autoAttackRange: 3.5,
   },
-  skills: DEMO_SKILLS,
+  skills: [...DEMO_SKILLS, ROLE_SECOND_WIND],
   extraSkills: new Map([[100, ROLE_DASH], [101, ROLE_BACKSTEP]]),
   autoAttackSkill: MELEE_AUTO,
   autoAttackInterval: 3000,
-  skillBar: buildSkillBar(DEMO_SKILLS, ROLE_DASH, ROLE_BACKSTEP),
+  skillBar: buildSkillBar([...DEMO_SKILLS, ROLE_SECOND_WIND], ROLE_DASH, ROLE_BACKSTEP),
   buffs: DEMO_BUFFS,
   buffMap: mergeBuffMap({}),
 }
@@ -111,7 +111,7 @@ export const DEFAULT_JOB: PlayerJob = {
 export const SAMURAI_JOB: PlayerJob = {
   id: 'samurai',
   name: '武士',
-  description: '暴力型近战职业。以雪、月、花三连斩集齐闪光后，释放纷乱雪月花造成毁灭性伤害。',
+  description: '以武士刀作为武器的战斗精英，擅长使用居合术打出超高伤害的近战职业。需要通过雪、月、花三连斩集齐闪光，释放纷乱雪月花造成毁灭性伤害。',
   category: JobCategory.Melee,
   stats: {
     hp: 11000,
@@ -133,7 +133,7 @@ export const SAMURAI_JOB: PlayerJob = {
 export const BLM_JOB: PlayerJob = {
   id: 'blm',
   name: '黑魔法师',
-  description: '以超长咏唱换取毁灭性伤害的远程魔法职业。灵极火提升攻击力，灵极冰恢复魔力，冰火交替是输出的核心。',
+  description: '使用双手咒杖的魔法导师，擅长单体进攻的远程魔法职业。灵极火提升攻击力，灵极冰恢复魔力，冰火交替是输出的核心。',
   category: JobCategory.Caster,
   stats: {
     hp: 8000,
@@ -158,7 +158,7 @@ export const BLM_JOB: PlayerJob = {
 export const BRD_JOB: PlayerJob = {
   id: 'brd',
   name: '吟游诗人',
-  description: '远程物理职业。通过切换三首战歌强化自身，在放浪神的小步舞曲期间积攒诗心，释放完美音调造成高额伤害。',
+  description: '以弓作为武器的战斗精英，擅长远距离输出和施加增益状态。需要轮换三首有着不同增益效果的战歌来提升自己的战斗力。',
   category: JobCategory.PhysRanged,
   stats: {
     hp: 9500,
@@ -183,7 +183,7 @@ export const BRD_JOB: PlayerJob = {
 export const DRK_JOB: PlayerJob = {
   id: 'drk',
   name: '暗黑骑士',
-  description: '以生命为代价换取强大攻击力的坦克职业。噬魂斩消耗HP造成高额伤害，吸收波远程回复生命，嗜血和暗影墙提供攻防转换窗口，行尸走肉是最后的保命手段。',
+  description: '以双手大剑作为武器，以生命为代价换取强大攻击力的战斗精英。噬魂斩消耗HP造成高额伤害，吸收波远程回复生命，嗜血和暗影墙提供攻防转换窗口，行尸走肉是最后的保命手段。',
   category: JobCategory.Tank,
   stats: {
     hp: 12000,

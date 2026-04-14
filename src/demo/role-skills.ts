@@ -1,4 +1,5 @@
 import type { SkillDef } from '@/core/types'
+import { icon } from './icon-paths'
 
 // ─── Auto Attacks ────────────────────────────────────────
 
@@ -41,6 +42,7 @@ export const CASTER_AUTO: SkillDef = {
 export const ROLE_DASH: SkillDef = {
   id: 'role_dash',
   name: '突进',
+  icon: icon('skill_icons/19_PLD', 2520),
   type: 'ability',
   castTime: 0, cooldown: 10000, gcd: false,
   targetType: 'single', requiresTarget: true,
@@ -52,6 +54,7 @@ export const ROLE_DASH: SkillDef = {
 export const ROLE_DASH_FORWARD: SkillDef = {
   id: 'role_dash_forward',
   name: '前冲',
+  icon: icon('skill_icons/38_DNC', 3467),
   type: 'ability',
   castTime: 0, cooldown: 10000, gcd: false,
   targetType: 'single', requiresTarget: false,
@@ -63,6 +66,7 @@ export const ROLE_DASH_FORWARD: SkillDef = {
 export const ROLE_BACKSTEP: SkillDef = {
   id: 'role_backstep',
   name: '后跳',
+  icon: icon('skill_icons/23_BRD', 366),
   type: 'ability',
   castTime: 0, cooldown: 10000, gcd: false,
   targetType: 'single', requiresTarget: true,
@@ -76,6 +80,7 @@ export const ROLE_BACKSTEP: SkillDef = {
 export const ROLE_SECOND_WIND: SkillDef = {
   id: 'role_second_wind',
   name: '内丹',
+  icon: icon('skill_icons/role_skills', 821),
   type: 'ability',
   castTime: 0, cooldown: 20000, gcd: false,
   targetType: 'single', requiresTarget: false,

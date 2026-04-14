@@ -1,4 +1,4 @@
-import { skillBarEntries, cooldowns, gcdState, buffDefs, buffs, tooltipContext } from '../state'
+import { skillBarEntries, cooldowns, gcdState, buffDefs, buffs, tooltipContext, playerMp } from '../state'
 import { buildSkillTooltip } from '../tooltip-builders'
 import { showTooltip, hideTooltip } from './Tooltip'
 
@@ -31,7 +31,8 @@ export function SkillBar() {
         const lockedByStacks = reqStacks
           ? (buffs.value.find(b => b.defId === reqStacks.buffId)?.stacks ?? 0) < reqStacks.stacks
           : false
-        const locked = lockedByBuffs || lockedByStacks
+        const lockedByMp = skill.mpCost > 0 && playerMp.value.current < skill.mpCost
+        const locked = lockedByBuffs || lockedByStacks || lockedByMp
 
         return (
           <div

@@ -1,10 +1,12 @@
 import type { SkillDef } from '@/core/types'
+import { icon } from './icon-paths'
 
 export const DEMO_SKILLS: SkillDef[] = [
   // 1: 近战单体战技
   {
     id: 'slash',
-    name: '劈砍',
+    name: '重劈',
+    icon: icon('skill_icons/21_WAR', 255),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -18,7 +20,8 @@ export const DEMO_SKILLS: SkillDef[] = [
   // 2: 远程单体战技
   {
     id: 'line_shot',
-    name: '射击',
+    name: '飞斧',
+    icon: icon('skill_icons/21_WAR', 261),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -33,6 +36,7 @@ export const DEMO_SKILLS: SkillDef[] = [
   {
     id: 'overpower',
     name: '超压斧',
+    icon: icon('skill_icons/21_WAR', 254),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -50,10 +54,11 @@ export const DEMO_SKILLS: SkillDef[] = [
       effects: [{ type: 'damage', potency: 0.6 }],
     }],
   },
-  // 4: 强化（增伤10%，15s）
+  // 4: 解放（增伤10%，15s）
   {
     id: 'embolden',
-    name: '强化',
+    name: '解放',
+    icon: icon('skill_icons/21_WAR', 2564),
     type: 'ability',
     castTime: 0,
     cooldown: 30000,
@@ -68,6 +73,7 @@ export const DEMO_SKILLS: SkillDef[] = [
   {
     id: 'rampart',
     name: '铁壁',
+    icon: icon('skill_icons/role_skills', 801),
     type: 'ability',
     castTime: 0,
     cooldown: 25000,
@@ -77,19 +83,5 @@ export const DEMO_SKILLS: SkillDef[] = [
     range: 0,
     mpCost: 0,
     effects: [{ type: 'apply_buff', buffId: 'rampart' }],
-  },
-  // 6: 治疗魔法（1.8s咏唱，自身回血，消耗MP）
-  {
-    id: 'cure',
-    name: '治疗',
-    type: 'spell',
-    castTime: 1800,
-    cooldown: 0,
-    gcd: true,
-    targetType: 'single',
-    requiresTarget: false,
-    range: 0,
-    mpCost: 2400,
-    effects: [{ type: 'heal', potency: 6 }],
   },
 ]
