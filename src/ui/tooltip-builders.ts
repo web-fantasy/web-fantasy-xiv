@@ -35,6 +35,7 @@ context?: { gcdDuration?: number; haste?: number }): string {
   const rightStats: string[] = []
   if (skill.range && skill.range > 0) rightStats.push(`距离 ${skill.range}m`)
   if (skill.mpCost && skill.mpCost > 0) rightStats.push(`<span style="color:#4488cc">MP ${skill.mpCost}</span>`)
+  if ((skill as any).hpCost && (skill as any).hpCost > 0) rightStats.push(`<span style="color:#ff6666">HP ${(skill as any).hpCost}</span>`)
   if (rightStats.length) {
     lines.push(`<div style="color:#aaa;font-size:11px;text-align:right;white-space:nowrap;margin-left:12px">${rightStats.join('<br>')}</div>`)
   }
@@ -156,6 +157,7 @@ function formatEffect(e: { type: string; potency?: number; buffId?: string; buff
     case 'consume_all_buff_stacks': return `<span style="color:#cc88ff">消耗所有：${e.buffId}</span>`
     case 'consume_buff_stacks': return `<span style="color:#cc88ff">消耗 ${e.buffId} ×${e.stacks}</span>`
     case 'restore_mp': return `<span style="color:#4488cc">恢复 ${((e.percent ?? 0) * 100).toFixed(0)}% MP</span>`
+    case 'dash_forward': return `<span style="color:#88ccff">向前方冲刺 ${e.distance}m</span><br><span style="color:#666;font-size:10px">止步状态下无法发动</span>`
     case 'dash_to_ley_lines': return `<span style="color:#88ccff">冲向黑魔纹中心</span>`
     case 'knockback': return `<span style="color:#ffaa66">击退 ${e.distance}m</span>`
     case 'pull': return `<span style="color:#ffaa66">吸引 ${e.distance}m</span>`
@@ -175,6 +177,10 @@ function formatBuffEffect(e: { type: string; value?: number }, stacks: number): 
     case 'speed_modify': return `<span style="color:#88ff88">速度 ${v > 0 ? '+' : ''}${(v * 100).toFixed(0)}%</span>`
     case 'dot': return `<span style="color:#ff8888">持续伤害</span>`
     case 'hot': return `<span style="color:#88ff88">持续治疗</span>`
+    case 'shield': return `<span style="color:#ffcc66">护盾 ${v}</span>`
+    case 'lifesteal': return `<span style="color:#88ff88">吸血 ${(v * 100).toFixed(0)}%</span>`
+    case 'mp_on_hit': return `<span style="color:#4488cc">受击回复 MP ${v}</span>`
+    case 'undying': return `<span style="color:#ffcc66">HP不会低于1</span>`
     case 'silence': return `<span style="color:#ff6666">沉默</span>`
     case 'stun': return `<span style="color:#ff6666">眩晕</span>`
     default: return `<span style="color:#888">${e.type}</span>`

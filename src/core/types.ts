@@ -77,6 +77,12 @@ export interface SkillDef {
   requiresTarget: boolean  // true = must have a locked enemy target to cast
   range: number            // max cast distance (only checked when requiresTarget=true)
   mpCost: number           // MP consumed on use (0 = free)
+  /** HP consumed on use (0 = free). Skill cannot be used if HP <= hpCost */
+  hpCost?: number
+  /** If caster has this buff, pay MP cost instead of HP cost */
+  hpCostSwapBuff?: string
+  /** If caster has this buff, HP cost becomes HP recovery instead */
+  hpCostReverseBuff?: string
   /** Buff IDs that must ALL be present on caster to use this skill */
   requiresBuffs?: string[]
   /** Minimum stacks of a specific buff required to use this skill */
@@ -99,6 +105,10 @@ export type BuffEffectDef =
   | { type: 'hot'; potency: number; interval: number }
   | { type: 'vulnerability'; value: number }  // per-stack damage taken increase (additive)
   | { type: 'haste'; value: number }    // reduce cast time, GCD, and AA interval (0.15 = 15%)
+  | { type: 'shield'; value: number }       // absorb damage, removed when depleted
+  | { type: 'lifesteal'; value: number }    // heal caster for % of damage dealt (0.2 = 20%)
+  | { type: 'mp_on_hit'; value: number }    // restore flat MP when taking damage
+  | { type: 'undying' }                     // HP cannot drop below 1
   | { type: 'silence' }
   | { type: 'stun' }
 

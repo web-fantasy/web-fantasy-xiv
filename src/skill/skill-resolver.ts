@@ -68,6 +68,19 @@ export class SkillResolver {
       && this.buffSystem.hasBuff(caster, skill.mpCostAbsorbBuff)
     if (skill.mpCost > 0 && !mpAbsorbed && caster.mp < skill.mpCost) return false
 
+    // HP cost check (swap buff converts to MP cost, reverse buff makes it free)
+    if (skill.hpCost && skill.hpCost > 0) {
+      const reversed = skill.hpCostReverseBuff && this.buffSystem.hasBuff(caster, skill.hpCostReverseBuff)
+      const swapped = !reversed && skill.hpCostSwapBuff && this.buffSystem.hasBuff(caster, skill.hpCostSwapBuff)
+      if (reversed) {
+        // Free — will heal instead
+      } else if (swapped) {
+        if (caster.mp < skill.hpCost) return false
+      } else {
+        if (caster.hp <= skill.hpCost) return false
+      }
+    }
+
     // Required buffs check
     if (skill.requiresBuffs && skill.requiresBuffs.length > 0) {
       for (const buffId of skill.requiresBuffs) {
@@ -136,8 +149,9 @@ export class SkillResolver {
   }
 
   private resolveImmediate(caster: Entity, skill: SkillDef): boolean {
-    // Deduct MP (or absorb via buff)
+    // Deduct costs
     this.deductMpCost(caster, skill)
+    this.deductHpCost(caster, skill)
 
     if (skill.gcd) {
       caster.gcdTimer = this.getHastedGcd(caster)
@@ -259,8 +273,11 @@ export class SkillResolver {
 
     // Zones were already spawned at cast start (startCast),
     // so we only emit completion here.
-    // Deduct MP on successful cast completion (or absorb via buff)
-    if (skill) this.deductMpCost(entity, skill)
+    // Deduct costs on successful cast completion
+    if (skill) {
+      this.deductMpCost(entity, skill)
+      this.deductHpCost(entity, skill)
+    }
 
     this.bus.emit('skill:cast_complete', { caster: entity, skill })
   }
@@ -277,6 +294,22 @@ export class SkillResolver {
       this.buffSystem.removeStacks(caster, skill.mpCostAbsorbBuff, 1)
     } else {
       caster.mp -= skill.mpCost
+    }
+  }
+
+  /** Deduct HP cost, swap to MP, or reverse to heal */
+  private deductHpCost(caster: Entity, skill: SkillDef): void {
+    if (!skill.hpCost || skill.hpCost <= 0) return
+    const reversed = skill.hpCostReverseBuff && this.buffSystem.hasBuff(caster, skill.hpCostReverseBuff)
+    if (reversed) {
+      caster.hp = Math.min(caster.maxHp, caster.hp + skill.hpCost)
+      return
+    }
+    const swapped = skill.hpCostSwapBuff && this.buffSystem.hasBuff(caster, skill.hpCostSwapBuff)
+    if (swapped) {
+      caster.mp -= skill.hpCost
+    } else {
+      caster.hp -= skill.hpCost
     }
   }
 

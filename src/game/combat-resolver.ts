@@ -193,14 +193,38 @@ export class CombatResolver {
 
   private applyDamage(caster: Entity, target: Entity, potency: number, skillName?: string): void {
     const vulnerability = this.buffSystem.getVulnerability(target)
-    const dmg = calculateDamage({
+    let dmg = calculateDamage({
       attack: caster.attack,
       potency,
       increases: [...this.buffSystem.getDamageIncreases(caster), vulnerability],
       mitigations: this.buffSystem.getMitigations(target),
     })
-    target.hp = Math.max(0, target.hp - dmg)
+
+    // Shield absorption
+    dmg = this.buffSystem.absorbShield(target, dmg)
+
+    // Apply damage with undying check
+    if (this.buffSystem.isUndying(target)) {
+      target.hp = Math.max(1, target.hp - dmg)
+    } else {
+      target.hp = Math.max(0, target.hp - dmg)
+    }
+
+    // MP on hit: restore MP when taking damage
+    const mpOnHit = this.buffSystem.getMpOnHit(target)
+    if (mpOnHit > 0 && dmg > 0) {
+      target.mp = Math.min(target.maxMp, target.mp + mpOnHit)
+    }
+
     this.bus.emit('damage:dealt', { source: caster, target, amount: dmg, skill: skillName ? { name: skillName } : null })
+
+    // Lifesteal: heal caster for % of damage dealt
+    const lifesteal = this.buffSystem.getLifesteal(caster)
+    if (lifesteal > 0 && dmg > 0) {
+      const heal = Math.floor(dmg * lifesteal)
+      caster.hp = Math.min(caster.maxHp, caster.hp + heal)
+      this.bus.emit('damage:dealt', { source: caster, target: caster, amount: -heal, skill: null })
+    }
   }
 
   private applyDisplacement(entity: Entity, newPos: { x: number; y: number }, duration?: number, easing?: EasingFn): void {

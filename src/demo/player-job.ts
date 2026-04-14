@@ -8,6 +8,7 @@ import { DEMO_SKILLS } from './demo-skills'
 import { SAMURAI_SKILLS, SAMURAI_BUFFS, SAMURAI_BUFF_MAP } from './swordsman-skills'
 import { BLM_SKILLS, BLM_LEYLINE_STEP, BLM_BUFFS, BLM_BUFF_MAP } from './blm-skills'
 import { BRD_SKILLS, BRD_BUFFS, BRD_BUFF_MAP } from './bard-skills'
+import { DRK_SKILLS, DRK_BUFFS, DRK_BUFF_MAP } from './drk-skills'
 import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
 
 /** Job category — matches icon filenames in public/assets/images/class_jobs/ */
@@ -170,8 +171,29 @@ export const BRD_JOB: PlayerJob = {
   ],
 }
 
+export const DRK_JOB: PlayerJob = {
+  id: 'drk',
+  name: '暗黑骑士',
+  description: '以生命为代价换取强大攻击力的坦克职业。暗影弹消耗HP造成高额伤害，吸血斩回复生命，暗黑意志和暗影壁提供攻防转换窗口，行尸走肉是最后的保命手段。',
+  category: JobCategory.Tank,
+  stats: {
+    hp: 12000,
+    mp: 8000,
+    attack: 1000,
+    speed: 5,
+    autoAttackRange: 3.5,
+  },
+  skills: [...DRK_SKILLS, ROLE_SECOND_WIND],
+  extraSkills: new Map([[100, ROLE_DASH], [101, ROLE_BACKSTEP]]),
+  autoAttackSkill: MELEE_AUTO,
+  autoAttackInterval: 3000,
+  skillBar: buildSkillBar([...DRK_SKILLS, ROLE_SECOND_WIND], ROLE_DASH, ROLE_BACKSTEP),
+  buffs: DRK_BUFFS,
+  buffMap: DRK_BUFF_MAP,
+}
+
 /** All available jobs */
-export const JOBS: PlayerJob[] = [DEFAULT_JOB, SAMURAI_JOB, BLM_JOB, BRD_JOB]
+export const JOBS: PlayerJob[] = [DEFAULT_JOB, SAMURAI_JOB, BLM_JOB, BRD_JOB, DRK_JOB]
 
 export function getJob(id: string): PlayerJob {
   return JOBS.find(j => j.id === id) ?? DEFAULT_JOB

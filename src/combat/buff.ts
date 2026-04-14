@@ -19,27 +19,39 @@ export class BuffSystem {
   applyBuff(entity: Entity, def: BuffDef, sourceId: string, addStacks = 1): void {
     this.registerDef(def)
 
+    // Add 1s grace period to all timed buffs.
+    // Without this, a 15s buff with 2.5s GCD requires frame-perfect input
+    // to land the 6th GCD at exactly 15.0s. The extra 1s ensures the last
+    // action within the intended window always goes through.
+    const effectiveDuration = def.duration > 0 ? def.duration + 1000 : 0
+
     const existing = entity.buffs.find((b) => b.defId === def.id)
     if (existing && !def.stackable) {
       // Non-stackable: just refresh duration (take longer)
-      existing.remaining = Math.max(existing.remaining, def.duration)
+      existing.remaining = Math.max(existing.remaining, effectiveDuration)
       existing.sourceId = sourceId
       return
     }
     if (existing && def.stackable) {
       // Stackable: add stacks (capped), refresh duration (take longer)
       existing.stacks = Math.min(existing.stacks + addStacks, def.maxStacks)
-      existing.remaining = Math.max(existing.remaining, def.duration)
+      existing.remaining = Math.max(existing.remaining, effectiveDuration)
       existing.sourceId = sourceId
       return
     }
 
-    entity.buffs.push({
+    const inst: BuffInstance = {
       defId: def.id,
       sourceId,
-      remaining: def.duration,
+      remaining: effectiveDuration,
       stacks: Math.min(addStacks, def.maxStacks),
-    })
+    }
+
+    // Initialize shield HP from shield effect
+    const shieldEffect = def.effects.find(e => e.type === 'shield') as { type: 'shield'; value: number } | undefined
+    if (shieldEffect) inst.shieldHp = shieldEffect.value
+
+    entity.buffs.push(inst)
 
     this.bus.emit('buff:applied', { target: entity, buff: def, source: sourceId })
   }
@@ -136,6 +148,43 @@ export class BuffSystem {
       .filter((e) => e.effect.type === 'haste')
       .map((e) => (e.effect as { type: 'haste'; value: number }).value)
     return values.length > 0 ? Math.max(...values) : 0
+  }
+
+  /** Check if entity has undying buff (HP cannot drop below 1) */
+  isUndying(entity: Entity): boolean {
+    return this.collectEffects(entity).some((e) => e.effect.type === 'undying')
+  }
+
+  /** Get total lifesteal value (sum of all sources) */
+  getLifesteal(entity: Entity): number {
+    return this.collectEffects(entity)
+      .filter((e) => e.effect.type === 'lifesteal')
+      .reduce((sum, e) => sum + (e.effect as { type: 'lifesteal'; value: number }).value, 0)
+  }
+
+  /** Get MP restored when taking damage (sum of all sources) */
+  getMpOnHit(entity: Entity): number {
+    return this.collectEffects(entity)
+      .filter((e) => e.effect.type === 'mp_on_hit')
+      .reduce((sum, e) => sum + (e.effect as { type: 'mp_on_hit'; value: number }).value, 0)
+  }
+
+  /** Absorb damage with shield buffs. Returns damage remaining after absorption. */
+  absorbShield(entity: Entity, damage: number): number {
+    let remaining = damage
+    for (let i = entity.buffs.length - 1; i >= 0; i--) {
+      if (remaining <= 0) break
+      const inst = entity.buffs[i]
+      if (inst.shieldHp == null || inst.shieldHp <= 0) continue
+      const absorbed = Math.min(inst.shieldHp, remaining)
+      inst.shieldHp -= absorbed
+      remaining -= absorbed
+      if (inst.shieldHp <= 0) {
+        entity.buffs.splice(i, 1)
+        this.bus.emit('buff:removed', { target: entity, buff: this.defs.get(inst.defId), reason: 'shield_broken' })
+      }
+    }
+    return remaining
   }
 
   getSpeedModifier(entity: Entity): number {
