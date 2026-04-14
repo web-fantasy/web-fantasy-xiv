@@ -80,6 +80,9 @@ export class GameScene {
   private onResizeHandler: () => void
   private config: GameSceneConfig
 
+  /** Recent damage taken by player (for death recap) */
+  private damageLog: { time: number; sourceName: string; skillName: string; amount: number; hpAfter: number; mitigation: number }[] = []
+
   /** Custom logic hook called each logic tick (after player update, before zone update) */
   onLogicTick: ((dt: number) => void) | null = null
 
@@ -125,6 +128,26 @@ export class GameScene {
     this.pauseMenu.onQuitGame(() => window.location.reload())
 
     // Resize
+    // Track damage taken by player for death recap
+    this.bus.on('damage:dealt', (payload: { source: Entity; target: Entity; amount: number; skill: any }) => {
+      if (payload.target.id === this.player?.id && payload.amount > 0) {
+        const elapsed = this.getCombatElapsed() ?? 0
+        const mitigations = this.buffSystem.getMitigations(payload.target)
+        const totalMit = mitigations.length > 0
+          ? 1 - mitigations.reduce((acc, v) => acc * (1 - v), 1)
+          : 0
+        this.damageLog.push({
+          time: elapsed,
+          sourceName: payload.source?.id ?? '?',
+          skillName: payload.skill?.name ?? '自动攻击',
+          amount: payload.amount,
+          hpAfter: payload.target.hp,
+          mitigation: totalMit,
+        })
+        if (this.damageLog.length > 20) this.damageLog.shift()
+      }
+    })
+
     this.onResizeHandler = () => this.sceneManager.engine.resize()
     window.addEventListener('resize', this.onResizeHandler)
   }
@@ -140,7 +163,7 @@ export class GameScene {
     return this.player
   }
 
-  /** Show defeat overlay with retry */
+  /** Show battle end overlay with death recap or clear time */
   onBattleEnd(result: 'victory' | 'wipe'): void {
     if (this.battleOver) return
     this.battleOver = true
@@ -150,21 +173,68 @@ export class GameScene {
     overlay.style.cssText = `
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.6); z-index: 80; cursor: pointer;
+      background: rgba(0,0,0,0.7); z-index: 80; cursor: pointer;
     `
-    const text = document.createElement('h2')
-    text.textContent = result === 'wipe' ? 'DEFEATED' : 'VICTORY'
-    text.style.cssText = `
+
+    const title = document.createElement('h2')
+    title.textContent = result === 'wipe' ? 'DEFEATED' : 'VICTORY'
+    title.style.cssText = `
       font-size: 32px; color: ${result === 'wipe' ? '#ff4444' : '#44ff44'};
-      font-weight: 300; letter-spacing: 6px; margin-bottom: 20px;
+      font-weight: 300; letter-spacing: 6px; margin-bottom: 16px;
     `
-    overlay.appendChild(text)
+    overlay.appendChild(title)
+
+    if (result === 'wipe') {
+      // Death recap: last 5 damage entries
+      const recap = document.createElement('div')
+      recap.style.cssText = `
+        font-family: monospace; font-size: 12px; line-height: 1.8;
+        color: #aaa; margin-bottom: 16px; text-align: left;
+        background: rgba(0,0,0,0.4); padding: 10px 16px; border-radius: 4px;
+        max-width: 500px;
+      `
+      const last5 = this.damageLog.slice(-5)
+      for (let i = 0; i < last5.length; i++) {
+        const d = last5[i]
+        const isLast = i === last5.length - 1
+        const timeStr = this.formatTime(d.time)
+        const mitStr = d.mitigation > 0 ? ` <span style="color:#88ccff">减伤${(d.mitigation * 100).toFixed(0)}%</span>` : ''
+        const tag = isLast ? ' <span style="color:#ff4444;font-weight:bold">【致命】</span>' : ''
+        const line = document.createElement('div')
+        line.innerHTML = `<span style="color:#666">${timeStr}</span> [<span style="color:#ff8888">${d.sourceName}</span>] ${d.skillName} <span style="color:#ff6666">${d.amount}</span> (HP:${Math.max(0, d.hpAfter)}${mitStr})${tag}`
+        recap.appendChild(line)
+      }
+      overlay.appendChild(recap)
+    } else {
+      // Victory: show clear time
+      const elapsed = this.getCombatElapsed() ?? 0
+      const clearTime = document.createElement('p')
+      clearTime.textContent = `通关用时 ${this.formatClearTime(elapsed)}`
+      clearTime.style.cssText = 'font-size: 18px; color: #ccc; margin-bottom: 16px; letter-spacing: 2px;'
+      overlay.appendChild(clearTime)
+    }
+
     const hint = document.createElement('p')
     hint.textContent = 'Click to retry'
-    hint.style.cssText = 'font-size: 14px; color: #888;'
+    hint.style.cssText = 'font-size: 14px; color: #666;'
     overlay.appendChild(hint)
     overlay.addEventListener('click', () => this.config.restart())
     this.config.uiRoot.appendChild(overlay)
+  }
+
+  private formatTime(ms: number): string {
+    const sec = ms / 1000
+    const m = Math.floor(sec / 60)
+    const s = (sec % 60).toFixed(1).padStart(4, '0')
+    return `${m}:${s}`
+  }
+
+  private formatClearTime(ms: number): string {
+    const totalSec = ms / 1000
+    const m = Math.floor(totalSec / 60)
+    const s = Math.floor(totalSec % 60)
+    const frac = (ms % 1000).toString().padStart(3, '0')
+    return `${m}'${s.toString().padStart(2, '0')}.${frac}''`
   }
 
   /** Watch for player death */
