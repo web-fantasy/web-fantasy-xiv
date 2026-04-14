@@ -146,6 +146,9 @@ vite.config.ts.timestamp-*
 .DS_Store
 Thumbs.db
 
+# Compiled test artifacts (never commit .test.js alongside .test.ts)
+src/**/*.test.js
+
 # Claude Code skills
 docs/superpowers
 .superpowers

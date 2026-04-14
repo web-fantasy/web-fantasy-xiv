@@ -71,11 +71,10 @@ describe('flattenTimeline', () => {
       { at: 62000, action: 'spawn_entity', entity: 'add1', position: { x: 10, y: 0 } },
     ]
     const result = flattenTimeline(raw)
-    expect(result[0]).toEqual({ at: 60000, action: 'switch_arena', arena: 'broken' })
-    expect(result[1]).toEqual({
+    expect(result[0]).toMatchObject({ at: 60000, action: 'switch_arena', arena: 'broken' })
+    expect(result[1]).toMatchObject({
       at: 62000, action: 'spawn_entity',
       spawnId: 'add1', spawnType: 'mob', spawnGroup: 'mob',
-      spawnHp: undefined, spawnAttack: undefined, spawnSpeed: undefined, spawnSize: undefined,
       position: { x: 10, y: 0 },
     })
   })

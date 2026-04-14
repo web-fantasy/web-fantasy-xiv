@@ -48,25 +48,9 @@ export class ArenaRenderer {
       case 'circle':
         mesh = MeshBuilder.CreateDisc(`deathzone-${id}`, { radius: shape.radius, tessellation: 48 }, this.scene)
         break
-      case 'fan': {
-        const arcRad = (shape.angle * Math.PI) / 180
-        const segments = 32
-        const positions: number[] = [0, 0, 0]
-        const indices: number[] = []
-        for (let i = 0; i <= segments; i++) {
-          const a = -arcRad / 2 + (arcRad * i) / segments
-          positions.push(Math.sin(a) * shape.radius, 0, Math.cos(a) * shape.radius)
-          if (i > 0) {
-            indices.push(0, i, i + 1)
-          }
-        }
-        const normals: number[] = new Array(positions.length).fill(0)
-        for (let i = 0; i < normals.length; i += 3) normals[i + 1] = 1
-        mesh = new MeshBuilder.CreateGround(`deathzone-${id}`, { width: 1, height: 1 }, this.scene)
-        mesh.dispose()
+      case 'fan':
         mesh = MeshBuilder.CreateDisc(`deathzone-${id}`, { radius: shape.radius, arc: shape.angle / 360, tessellation: 48 }, this.scene)
         break
-      }
       case 'ring':
         mesh = MeshBuilder.CreateDisc(`deathzone-${id}`, { radius: shape.outerRadius, tessellation: 48 }, this.scene)
         // TODO: proper ring with inner hole — for now use outer disc
@@ -78,14 +62,24 @@ export class ArenaRenderer {
         return
     }
 
-    mesh.rotation.x = Math.PI / 2
-    if (shape.type === 'rect') mesh.rotation.x = 0 // ground already flat
+    // Lay flat — disc/fan needs rotation.x, ground (rect) is already flat
+    if (shape.type !== 'rect') mesh.rotation.x = Math.PI / 2
+
+    // Facing rotation — same formula as AoeRenderer
     if (shape.type === 'fan') {
-      mesh.rotation.y = -facingRad
+      mesh.rotation.y = ((facing - 90 + shape.angle / 2) * Math.PI) / 180
     } else if (shape.type === 'rect') {
-      mesh.rotation.y = -facingRad
+      mesh.rotation.y = (facing * Math.PI) / 180
     }
-    mesh.position.set(center.x, 0.02, center.y)
+
+    // Position — rects offset along facing (start at center, extend forward)
+    if (shape.type === 'rect') {
+      const offsetX = Math.sin(facingRad) * (shape.length / 2)
+      const offsetZ = Math.cos(facingRad) * (shape.length / 2)
+      mesh.position.set(center.x + offsetX, 0.02, center.y + offsetZ)
+    } else {
+      mesh.position.set(center.x, 0.02, center.y)
+    }
     mesh.material = this.dzMat
     this.deathZoneMeshes.set(id, mesh)
   }

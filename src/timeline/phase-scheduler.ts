@@ -98,17 +98,18 @@ export class PhaseScheduler {
     }
   }
 
-  /** Flat list of all actions from active phases, with absolute times for display */
+  /** Flat list of upcoming/recent actions from active phases, with absolute times for display */
   getAllActions(): { action: TimelineAction; phaseId: string; absoluteAt: number }[] {
     const result: { action: TimelineAction; phaseId: string; absoluteAt: number }[] = []
     for (const active of this.activePhases) {
       const phaseStart = this.combatElapsed - active.elapsed
       for (const action of active.def.actions) {
-        result.push({
-          action,
-          phaseId: active.def.id,
-          absoluteAt: action.at + phaseStart,
-        })
+        // Skip non-skill actions (teleport, enable_ai, etc.)
+        if (action.action !== 'use') continue
+        const absoluteAt = action.at + phaseStart
+        // Only include actions within a reasonable window (not ancient history)
+        if (absoluteAt < this.combatElapsed - 5000) continue
+        result.push({ action, phaseId: active.def.id, absoluteAt })
       }
     }
     return result

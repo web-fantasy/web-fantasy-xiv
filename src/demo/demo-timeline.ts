@@ -121,19 +121,13 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     }
   })
 
-  // Mob death → apply 润泽 buff to player + clear stale target + remove AOE zones
+  // Generic mob death cleanup: clear stale target + cancel orphan AOE zones
   s.bus.on('entity:died', (payload: { entity: Entity }) => {
     const dead = payload.entity
-    if (dead.group === 'adds_wave1') {
-      const junzeDef = DEMO_BUFFS.junze
-      if (junzeDef) s.buffSystem.applyBuff(s.player, junzeDef, dead.id, 1)
-    }
-    // Clear player target if it was the dead entity
     if (s.player.target === dead.id) {
       s.player.target = null
       s.bus.emit('target:released', { entity: s.player })
     }
-    // Remove all AOE zones belonging to the dead entity
     s.zoneMgr.cancelAllByCaster(dead.id)
   })
 
