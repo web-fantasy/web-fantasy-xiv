@@ -11,6 +11,7 @@ import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSi
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
 import type { EncounterData } from '@/game/encounter-loader'
+import type { EntityType } from '@/core/types'
 
 let scene: GameScene | null = null
 
@@ -340,6 +341,29 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       case 'run_script':
         if (action.script) scriptRunner.run(action.script)
         break
+      case 'spawn_entity': {
+        const id = action.spawnId ?? action.entity ?? `mob_${Date.now()}`
+        const type = (action.spawnType ?? 'mob') as EntityType
+        const entity = s.entityMgr.create({
+          id,
+          type,
+          group: action.spawnGroup ?? type,
+          hp: action.spawnHp ?? 1000,
+          maxHp: action.spawnHp ?? 1000,
+          attack: action.spawnAttack ?? 100,
+          speed: action.spawnSpeed ?? 0,
+          size: action.spawnSize ?? 0.5,
+          position: { x: action.position?.x ?? 0, y: action.position?.y ?? 0, z: 0 },
+          facing: 180,
+        })
+        entityMap.set(id, entity)
+        if (type === 'mob' || type === 'boss') {
+          const ai = new BossBehavior(entity, {})
+          ai.lockFacing(entity.facing)
+          aiMap.set(id, ai)
+        }
+        break
+      }
     }
   })
 
