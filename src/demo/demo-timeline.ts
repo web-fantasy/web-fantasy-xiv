@@ -5,8 +5,7 @@ import { PhaseScheduler } from '@/timeline/phase-scheduler'
 import { loadEncounter } from '@/game/encounter-loader'
 import { DeathZoneManager } from '@/arena/death-zone-manager'
 import { ScriptRunner } from '@/timeline/script-runner'
-import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
-import { DEMO_BUFFS } from './demo-buffs'
+import { DEFAULT_JOB } from './player-job'
 import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSignal, timelineEntries, dialogText, currentPhaseInfo, type TimelineEntry } from '@/ui/state'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
@@ -60,10 +59,10 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   scene = new GameScene({
     engine, uiRoot, arena: enc.arena,
     playerInputConfig: {
-      skills: DEMO_SKILLS,
-      extraSkills: new Map([[100, SKILL_DASH], [101, SKILL_BACKSTEP]]),
-      autoAttackSkill: AUTO_ATTACK,
-      autoAttackInterval: 3000,
+      skills: DEFAULT_JOB.skills,
+      extraSkills: DEFAULT_JOB.extraSkills,
+      autoAttackSkill: DEFAULT_JOB.autoAttackSkill,
+      autoAttackInterval: DEFAULT_JOB.autoAttackInterval,
     },
     restart: () => startTimelineDemo(canvas, uiRoot, encounterUrl),
   })
@@ -100,7 +99,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   }
 
   const boss = entityMap.get('boss')!
-  s.combatResolver.registerBuffs(DEMO_BUFFS)
+  s.combatResolver.registerBuffs(DEFAULT_JOB.buffs)
 
   let combatStarted = false
   const bossAutoSkill = enc.skills.get('boss_auto')

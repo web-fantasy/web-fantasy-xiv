@@ -4,8 +4,7 @@ import { useEngine } from '../engine-context'
 import { createStateAdapter } from '../state-adapter'
 import { startTimelineDemo, getActiveScene, disposeActiveScene } from '@/demo/demo-timeline'
 import { resetState, skillBarEntries as skillBarEntriesSignal, buffDefs as buffDefsSignal } from '../state'
-import { DEMO_SKILL_BAR } from '@/demo/demo-skill-bar'
-import { DEMO_BUFF_MAP } from '@/demo/demo-buffs'
+import { DEFAULT_JOB } from '@/demo/player-job'
 import { BossHpBar, PlayerHpBar, PlayerMpBar } from './HpBar'
 import { PlayerCastBar, BossCastBar } from './CastBar'
 import { SkillBar } from './SkillBar'
@@ -18,8 +17,32 @@ import { BattleEndOverlay } from './BattleEndOverlay'
 import { DebugInfo } from './DebugInfo'
 import { TimelineDisplay } from './TimelineDisplay'
 import { Tooltip } from './Tooltip'
+import { SkillPanel, toggleSkillPanel, useSkillPanelKey } from './SkillPanel'
+
+function SkillPanelButton() {
+  return (
+    <div
+      style={{
+        position: 'absolute', bottom: 74, left: '50%',
+        transform: 'translateX(calc(-50% + 180px))',
+        pointerEvents: 'auto', cursor: 'pointer',
+        width: 24, height: 24,
+        background: 'rgba(0,0,0,0.7)',
+        border: '1px solid rgba(255,255,255,0.3)',
+        borderRadius: 4,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 14, color: '#aaa',
+      }}
+      title="技能一览 (P)"
+      onClick={toggleSkillPanel}
+    >
+      ?
+    </div>
+  )
+}
 
 export function GameView() {
+  useSkillPanelKey()
   const { params } = useRoute()
   const { canvas } = useEngine()
   const uiRef = useRef<HTMLDivElement>(null)
@@ -32,8 +55,8 @@ export function GameView() {
     const encounterUrl = `${base}encounters/${id}.yaml`
 
     // Set skill bar + buff defs for HUD
-    skillBarEntriesSignal.value = DEMO_SKILL_BAR
-    buffDefsSignal.value = DEMO_BUFF_MAP as any
+    skillBarEntriesSignal.value = DEFAULT_JOB.skillBar
+    buffDefsSignal.value = DEFAULT_JOB.buffMap as any
 
     let adapter: ReturnType<typeof createStateAdapter> | null = null
     let active = true
@@ -79,6 +102,7 @@ export function GameView() {
       <PlayerCastBar />
       <BossCastBar />
       <SkillBar />
+      <SkillPanelButton />
       <BuffBar />
       <DamageFloater />
       <CombatAnnounce />
@@ -88,6 +112,7 @@ export function GameView() {
       <DebugInfo />
       <TimelineDisplay />
       <Tooltip />
+      <SkillPanel />
     </div>
   )
 }
