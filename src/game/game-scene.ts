@@ -17,12 +17,9 @@ import { CameraController } from './camera-controller'
 import { CombatResolver } from './combat-resolver'
 import { PlayerInputDriver, type PlayerInputConfig } from './player-input-driver'
 import { DisplacementAnimator } from './displacement-animator'
-import { UIManager, type SkillBarEntry } from '@/ui/ui-manager'
-import { PauseMenu } from '@/ui/pause-menu'
 import { DevTerminal } from '@/devtools/dev-terminal'
 import { CommandRegistry } from '@/devtools/commands'
-import { DebugInfo } from '@/ui/debug-info'
-import { CombatAnnounce } from '@/ui/combat-announce'
+import { paused as pausedSignal, battleResult } from '@/ui/state'
 import type { ArenaDef } from '@/core/types'
 import type { Entity } from '@/entity/entity'
 import type { CreateEntityOptions } from '@/entity/entity'
@@ -32,9 +29,6 @@ export interface GameSceneConfig {
   uiRoot: HTMLDivElement
   arena: ArenaDef
   playerInputConfig: PlayerInputConfig
-  skillBarEntries: SkillBarEntry[]
-  /** Buff definitions for tooltip display */
-  buffDefs?: Map<string, any>
   /** Called to restart this scene (for retry) */
   restart: () => void
 }
@@ -66,12 +60,8 @@ export class GameScene {
   readonly camera: CameraController
   playerDriver!: PlayerInputDriver
 
-  // UI
-  readonly uiManager: UIManager
-  readonly pauseMenu: PauseMenu
+  // UI (only DevTerminal remains — rest migrated to Preact)
   readonly devTerminal: DevTerminal
-  readonly debugInfo: DebugInfo
-  readonly announce: CombatAnnounce
 
   // State
   paused = false
@@ -80,11 +70,11 @@ export class GameScene {
   private lastTime = performance.now()
   readonly config: GameSceneConfig
 
-  /** Recent damage taken by player (for death recap) */
-  private damageLog: { time: number; sourceName: string; skillName: string; amount: number; hpAfter: number; mitigation: number }[] = []
-
   /** Custom logic hook called each logic tick (after player update, before zone update) */
   onLogicTick: ((dt: number) => void) | null = null
+
+  /** External hook called each render frame (for UI state adapter) */
+  onRenderTick: ((delta: number) => void) | null = null
 
   /** Custom hook for combat elapsed time display. Return ms or null. */
   getCombatElapsed: (() => number | null) = () => null
@@ -112,45 +102,9 @@ export class GameScene {
     this.input = new InputManager(config.engine.getRenderingCanvas()!)
     this.camera = new CameraController()
 
-    // UI
-    this.uiManager = new UIManager(config.uiRoot, this.bus, config.skillBarEntries, config.buffDefs)
-    this.uiManager.bindScene(this.sceneManager)
-    this.uiManager.bindBuffSystem(this.buffSystem)
-    this.pauseMenu = new PauseMenu(config.uiRoot)
+    // DevTerminal (only remaining vanilla UI)
     this.devTerminal = new DevTerminal(this.bus, new CommandRegistry())
     this.devTerminal.mount(config.uiRoot)
-    this.debugInfo = new DebugInfo(config.uiRoot)
-    this.announce = new CombatAnnounce(config.uiRoot)
-
-    // Pause menu
-    this.pauseMenu.onResumeGame(() => { this.paused = false; this.pauseMenu.hide() })
-    this.pauseMenu.onRetryGame(() => config.restart())
-    this.pauseMenu.onQuitGame(() => {
-      window.history.pushState(null, '', '/')
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    })
-
-    // Resize
-    // Track damage taken by player for death recap
-    this.bus.on('damage:dealt', (payload: { source: Entity; target: Entity; amount: number; skill: any }) => {
-      if (payload.target.id === this.player?.id && payload.amount > 0) {
-        const elapsed = this.getCombatElapsed() ?? 0
-        const mitigations = this.buffSystem.getMitigations(payload.target)
-        const totalMit = mitigations.length > 0
-          ? 1 - mitigations.reduce((acc, v) => acc * (1 - v), 1)
-          : 0
-        this.damageLog.push({
-          time: elapsed,
-          sourceName: payload.source?.id ?? '?',
-          skillName: payload.skill?.name ?? '自动攻击',
-          amount: payload.amount,
-          hpAfter: payload.target.hp,
-          mitigation: totalMit,
-        })
-        if (this.damageLog.length > 20) this.damageLog.shift()
-      }
-    })
-
   }
 
   /** Create player entity and bind input driver + camera */
@@ -164,85 +118,14 @@ export class GameScene {
     return this.player
   }
 
-  /** Show battle end overlay with death recap or clear time */
-  onBattleEnd(result: 'victory' | 'wipe'): void {
-    if (this.battleOver) return
-    this.battleOver = true
-    this.bus.emit('combat:ended', { result })
-
-    const overlay = document.createElement('div')
-    overlay.style.cssText = `
-      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: rgba(0,0,0,0.7); z-index: 80; cursor: pointer;
-    `
-
-    const title = document.createElement('h2')
-    title.textContent = result === 'wipe' ? 'DEFEATED' : 'VICTORY'
-    title.style.cssText = `
-      font-size: 32px; color: ${result === 'wipe' ? '#ff4444' : '#44ff44'};
-      font-weight: 300; letter-spacing: 6px; margin-bottom: 16px;
-    `
-    overlay.appendChild(title)
-
-    if (result === 'wipe') {
-      // Death recap: last 5 damage entries
-      const recap = document.createElement('div')
-      recap.style.cssText = `
-        font-family: monospace; font-size: 12px; line-height: 1.8;
-        color: #aaa; margin-bottom: 16px; text-align: left;
-        background: rgba(0,0,0,0.4); padding: 10px 16px; border-radius: 4px;
-        max-width: 500px;
-      `
-      const last5 = this.damageLog.slice(-5)
-      for (let i = 0; i < last5.length; i++) {
-        const d = last5[i]
-        const isLast = i === last5.length - 1
-        const timeStr = this.formatTime(d.time)
-        const mitStr = d.mitigation > 0 ? ` <span style="color:#88ccff">减伤${(d.mitigation * 100).toFixed(0)}%</span>` : ''
-        const tag = isLast ? ' <span style="color:#ff4444;font-weight:bold">【致命】</span>' : ''
-        const line = document.createElement('div')
-        line.innerHTML = `<span style="color:#666">${timeStr}</span> [<span style="color:#ff8888">${d.sourceName}</span>] ${d.skillName} <span style="color:#ff6666">${d.amount}</span> (HP:${Math.max(0, d.hpAfter)}${mitStr})${tag}`
-        recap.appendChild(line)
-      }
-      overlay.appendChild(recap)
-    } else {
-      // Victory: show clear time
-      const elapsed = this.getCombatElapsed() ?? 0
-      const clearTime = document.createElement('p')
-      clearTime.textContent = `通关用时 ${this.formatClearTime(elapsed)}`
-      clearTime.style.cssText = 'font-size: 18px; color: #ccc; margin-bottom: 16px; letter-spacing: 2px;'
-      overlay.appendChild(clearTime)
-    }
-
-    const hint = document.createElement('p')
-    hint.textContent = 'Click to retry'
-    hint.style.cssText = 'font-size: 14px; color: #666;'
-    overlay.appendChild(hint)
-    overlay.addEventListener('click', () => this.config.restart())
-    this.config.uiRoot.appendChild(overlay)
-  }
-
-  private formatTime(ms: number): string {
-    const sec = ms / 1000
-    const m = Math.floor(sec / 60)
-    const s = (sec % 60).toFixed(1).padStart(4, '0')
-    return `${m}:${s}`
-  }
-
-  private formatClearTime(ms: number): string {
-    const totalSec = ms / 1000
-    const m = Math.floor(totalSec / 60)
-    const s = Math.floor(totalSec % 60)
-    const frac = (ms % 1000).toString().padStart(3, '0')
-    return `${m}'${s.toString().padStart(2, '0')}.${frac}''`
-  }
-
-  /** Watch for player death */
+  /** Watch for player death — sets battleResult signal */
   watchPlayerDeath(): void {
     this.bus.on('damage:dealt', (payload: { target: Entity }) => {
       if (payload.target.id === this.player.id && payload.target.hp <= 0) {
-        this.onBattleEnd('wipe')
+        if (this.battleOver) return
+        this.battleOver = true
+        this.bus.emit('combat:ended', { result: 'wipe' })
+        battleResult.value = 'wipe'
       }
     })
   }
@@ -253,8 +136,11 @@ export class GameScene {
       if (this.paused || this.battleOver) return
       if (this.devTerminal.isVisible()) return
 
+      // Sync pause state from Preact signal
+      if (pausedSignal.value !== this.paused) this.paused = pausedSignal.value
+
       const result = this.playerDriver.update(dt)
-      if (result === 'pause') { this.paused = true; this.pauseMenu.show(); return }
+      if (result === 'pause') { this.paused = true; pausedSignal.value = true; return }
 
       this.onLogicTick?.(dt)
 
@@ -279,9 +165,7 @@ export class GameScene {
       this.aoeRenderer.update(now)
       this.hitEffectRenderer.update(delta, (id) => this.entityMgr.get(id))
 
-      const bossForUI = this.bossEntity ?? this.player
-      this.uiManager.update(this.player, bossForUI, (sid) => this.skillResolver.getCooldown(this.player.id, sid))
-      this.debugInfo.update(delta, this.player, this.getCombatElapsed())
+      this.onRenderTick?.(delta)
     })
   }
 

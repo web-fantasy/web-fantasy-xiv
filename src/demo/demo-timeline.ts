@@ -8,6 +8,7 @@ import { DeathZoneManager } from '@/arena/death-zone-manager'
 import { DEMO_SKILLS, AUTO_ATTACK, SKILL_DASH, SKILL_BACKSTEP } from './demo-skills'
 import { DEMO_BUFFS, DEMO_BUFF_MAP } from './demo-buffs'
 import { DEMO_SKILL_BAR } from './demo-skill-bar'
+import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSignal } from '@/ui/state'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
 import type { EncounterData } from '@/game/encounter-loader'
@@ -58,14 +59,12 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
 
   scene = new GameScene({
     engine, uiRoot, arena: enc.arena,
-    skillBarEntries: DEMO_SKILL_BAR,
     playerInputConfig: {
       skills: DEMO_SKILLS,
       extraSkills: new Map([[100, SKILL_DASH], [101, SKILL_BACKSTEP]]),
       autoAttackSkill: AUTO_ATTACK,
       autoAttackInterval: 3000,
     },
-    buffDefs: DEMO_BUFF_MAP,
     restart: () => startTimelineDemo(canvas, uiRoot, encounterUrl),
   })
 
@@ -118,19 +117,41 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     combatStarted = true
     s.player.inCombat = true
     boss.inCombat = true
-    s.announce.show('战斗开始')
+    announceText.value = '战斗开始'
     s.bus.emit('combat:started', { entities: [s.player, boss] })
   }
 
-  s.bus.on('damage:dealt', (payload: { source: Entity; target: Entity }) => {
+  s.bus.on('damage:dealt', (payload: { source: Entity; target: Entity; amount: number; skill: any }) => {
     if (payload.target.id === boss.id && !combatStarted) engageCombat()
     // Check victory: boss dead
-    if (payload.target.id === boss.id && payload.target.hp <= 0) s.onBattleEnd('victory')
-    // Check player dead
-    if (payload.target.id === s.player.id && payload.target.hp <= 0) s.onBattleEnd('wipe')
+    if (payload.target.id === boss.id && payload.target.hp <= 0) {
+      if (!s.battleOver) {
+        s.battleOver = true
+        s.bus.emit('combat:ended', { result: 'victory' })
+        battleResult.value = 'victory'
+      }
+    }
+    // Check player dead (handled by watchPlayerDeath via signal)
     // Mob death: destroy entity when hp reaches 0
     if (payload.target.type === 'mob' && payload.target.hp <= 0 && payload.target.alive) {
       s.entityMgr.destroy(payload.target.id)
+    }
+    // Damage log for death recap
+    if (payload.target.id === s.player.id && payload.amount > 0) {
+      const elapsed = combatStarted ? scheduler.combatElapsed : 0
+      const mitigations = s.buffSystem.getMitigations(payload.target)
+      const totalMit = mitigations.length > 0
+        ? 1 - mitigations.reduce((acc: number, v: number) => acc * (1 - v), 1)
+        : 0
+      const log = damageLog.value
+      damageLog.value = [...log.slice(-19), {
+        time: elapsed,
+        sourceName: payload.source?.id ?? '?',
+        skillName: payload.skill?.name ?? '自动攻击',
+        amount: payload.amount,
+        hpAfter: payload.target.hp,
+        mitigation: totalMit,
+      }]
     }
   })
 
@@ -296,7 +317,10 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     }
 
     timelineDisplay.update(dt)
+
+    combatElapsedSignal.value = combatStarted ? scheduler.combatElapsed : null
   }
 
+  s.watchPlayerDeath()
   s.start()
 }
