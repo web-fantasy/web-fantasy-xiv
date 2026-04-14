@@ -5,12 +5,13 @@ export class SceneManager {
   readonly scene: Scene
   readonly camera: ArcRotateCamera
 
-  // Camera roll animation state
-  private rollAngle = 0          // current roll in radians
-  private rollTarget = 0         // target roll
-  private rollSnapSpeed = 0      // rad/ms for snap phase
-  private rollReturnSpeed = 0    // rad/ms for return phase
+  // Camera roll animation state (applied as CSS transform on canvas)
+  private rollAngle = 0          // current roll in degrees
+  private rollTarget = 0         // target roll in degrees
+  private rollSnapSpeed = 0      // deg/ms for snap phase
+  private rollReturnSpeed = 0    // deg/ms for return phase
   private rollPhase: 'idle' | 'snap' | 'return' = 'idle'
+  private canvas: HTMLCanvasElement
 
   constructor(canvas: HTMLCanvasElement) {
     this.engine = new Engine(canvas, true, { preserveDrawingBuffer: true })
@@ -34,6 +35,8 @@ export class SceneManager {
 
     const sun = new DirectionalLight('sun', new Vector3(-1, -2, -1).normalize(), this.scene)
     sun.intensity = 0.6
+
+    this.canvas = canvas
   }
 
   /** Set camera target directly (used by CameraController) */
@@ -43,13 +46,13 @@ export class SceneManager {
 
   /**
    * Trigger a camera roll animation (tilt effect).
-   * Quickly snaps to angleDeg, then slowly returns to 0.
+   * Applied as CSS rotate() on the canvas — safe, doesn't touch Babylon internals.
    * Positive = clockwise, negative = counter-clockwise.
    */
   rollCamera(angleDeg: number, snapMs = 150, returnMs = 1500): void {
-    this.rollTarget = (angleDeg * Math.PI) / 180
-    this.rollSnapSpeed = Math.abs(this.rollTarget) / Math.max(snapMs, 1)
-    this.rollReturnSpeed = Math.abs(this.rollTarget) / Math.max(returnMs, 1)
+    this.rollTarget = angleDeg
+    this.rollSnapSpeed = Math.abs(angleDeg) / Math.max(snapMs, 1)
+    this.rollReturnSpeed = Math.abs(angleDeg) / Math.max(returnMs, 1)
     this.rollPhase = 'snap'
   }
 
@@ -58,7 +61,6 @@ export class SceneManager {
     if (this.rollPhase === 'idle') return
 
     if (this.rollPhase === 'snap') {
-      // Move toward target quickly
       const step = this.rollSnapSpeed * deltaMs
       if (Math.abs(this.rollTarget - this.rollAngle) <= step) {
         this.rollAngle = this.rollTarget
@@ -67,7 +69,6 @@ export class SceneManager {
         this.rollAngle += Math.sign(this.rollTarget - this.rollAngle) * step
       }
     } else if (this.rollPhase === 'return') {
-      // Slowly return to 0
       const step = this.rollReturnSpeed * deltaMs
       if (Math.abs(this.rollAngle) <= step) {
         this.rollAngle = 0
@@ -77,12 +78,10 @@ export class SceneManager {
       }
     }
 
-    // Apply roll via upVector rotation
-    if (Number.isFinite(this.rollAngle)) {
-      const cos = Math.cos(this.rollAngle)
-      const sin = Math.sin(this.rollAngle)
-      this.camera.upVector.set(sin, cos, 0)
-    }
+    // Apply as CSS transform — no Babylon matrix issues
+    this.canvas.style.transform = this.rollAngle !== 0
+      ? `rotate(${this.rollAngle}deg)`
+      : ''
   }
 
   startRenderLoop(onBeforeRender: () => void): void {
