@@ -242,7 +242,7 @@ skills:
         shape: { type: circle, radius: 99 }
         resolveDelay: 10000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 999999999 }]
+        effects: [{ type: damage, potency: 999999999, dmgType: special }]
 
 # Timeline (boss actions after combat starts)
 timeline:

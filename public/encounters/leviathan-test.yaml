@@ -116,7 +116,7 @@ local_skills:
         shape: { type: circle, radius: 99 }
         resolveDelay: 10000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 999999 }]
+        effects: [{ type: damage, potency: 999999, dmgType: special }]
 
 skills: {}
 

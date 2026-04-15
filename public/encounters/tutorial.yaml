@@ -13,7 +13,7 @@ entities:
     type: boss
     group: boss
     hp: 45000
-    attack: 500
+    attack: 1
     speed: 4
     size: 1.5
     facing: 180
@@ -227,7 +227,7 @@ local_skills:
         shape: { type: circle, radius: 99 }
         resolveDelay: 10000
         hitEffectDuration: 500
-        effects: [{ type: damage, potency: 999999999 }]
+        effects: [{ type: damage, potency: 999999999, dmgType: special }]
 
 skills:
   boss_auto:
