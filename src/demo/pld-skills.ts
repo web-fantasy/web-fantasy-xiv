@@ -1,12 +1,12 @@
 import type { SkillDef, BuffDef } from '@/core/types'
-import { icon, stackIcons } from './icon-paths'
+import { icon } from './icon-paths'
 
 export const PLD_SKILLS: SkillDef[] = [
   // 1: Vanguard Blade — melee, stacks Requiescat, consumes Fight or Flight for +25% damage + 2000 MP
   {
     id: 'pld_vanguard',
     name: '先锋剑',
-    icon: icon('skill_icons/19_PLD', 2516),
+    icon: icon('skill_icons/19_PLD', 158),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -25,7 +25,7 @@ export const PLD_SKILLS: SkillDef[] = [
   {
     id: 'pld_holy_spirit',
     name: '圣灵',
-    icon: icon('skill_icons/19_PLD', 2528),
+    icon: icon('skill_icons/19_PLD', 2514),
     type: 'spell',
     castTime: 2500,
     cooldown: 0,
@@ -45,7 +45,7 @@ export const PLD_SKILLS: SkillDef[] = [
   {
     id: 'pld_shield_lob',
     name: '投盾',
-    icon: icon('skill_icons/19_PLD', 2518),
+    icon: icon('skill_icons/19_PLD', 164),
     type: 'weaponskill',
     castTime: 0,
     cooldown: 0,
@@ -60,7 +60,7 @@ export const PLD_SKILLS: SkillDef[] = [
   {
     id: 'pld_clemency',
     name: '深仁厚泽',
-    icon: icon('skill_icons/19_PLD', 2515),
+    icon: icon('skill_icons/19_PLD', 2509),
     type: 'spell',
     castTime: 1800,
     cooldown: 0,
@@ -95,7 +95,7 @@ export const PLD_BUFFS: Record<string, BuffDef> = {
     id: 'pld_requiescat',
     name: '安魂祈祷',
     description: '释放圣灵时消耗1层使其即时咏唱。',
-    iconPerStack: stackIcons('player_skill_effects', 12857, 4),
+    icon: icon('player_skill_effects', 12514),
     type: 'buff',
     duration: 21000,
     stackable: true,
@@ -106,7 +106,7 @@ export const PLD_BUFFS: Record<string, BuffDef> = {
     id: 'pld_fof',
     name: '战逃反应',
     description: '释放先锋剑时消耗1层使其威力提高25%，并回复2000MP。',
-    iconPerStack: stackIcons('player_skill_effects', 12801, 4),
+    icon: icon('player_skill_effects', 10155),
     type: 'buff',
     duration: 21000,
     stackable: true,
@@ -117,7 +117,7 @@ export const PLD_BUFFS: Record<string, BuffDef> = {
     id: 'pld_hallowed',
     name: '神圣领域',
     description: '特殊攻击之外其他所有攻击均无效。',
-    icon: icon('player_skill_effects', 12540),
+    icon: icon('player_skill_effects', 12504),
     type: 'buff',
     duration: 10000,
     stackable: false,

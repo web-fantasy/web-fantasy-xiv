@@ -63,3 +63,8 @@ Three decoupled layers:
 ## Tests
 
 Colocated `*.test.ts` files next to source. Vitest globals enabled — `describe`, `it`, `expect` available without import; use `vi` for mocking.
+
+## Design References
+
+- [Job Balance](docs/job-balance.md) — DPM baseline, damage formula, per-job verification template. Key rules: increases are additive (`1 + sum`), only mitigations are multiplicative; `special` damage bypasses all defenses.
+- [Prototype Design](docs/specs/2026-04-13-prototype-design.md) — Original game design spec.
