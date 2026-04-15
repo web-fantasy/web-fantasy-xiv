@@ -98,8 +98,47 @@ export function MainMenu() {
   )
 }
 
+interface EncounterEntry {
+  label: string
+  description: string
+  file: string
+  difficulty?: string
+  duration?: string
+  dpsCheck?: number
+  hidden?: boolean
+}
+
+const isDev = import.meta.env.DEV
+
+const DIFFICULTY_META: Record<string, { short: string; label: string; color: string }> = {
+  tutorial: { short: '教学', label: '教学关卡', color: '#6a8' },
+  normal:   { short: '歼灭', label: '歼灭战',   color: '#8ab' },
+  extreme:  { short: '歼殛', label: '歼殛战',   color: '#c86' },
+  savage:   { short: '零式', label: '零式',     color: '#c66' },
+  ultimate: { short: '绝境', label: '绝境战',   color: '#d4a' },
+}
+
+function DifficultyBadge({ difficulty }: { difficulty?: string }) {
+  const meta = DIFFICULTY_META[difficulty ?? 'normal'] ?? DIFFICULTY_META.normal
+  return (
+    <span style={{
+      display: 'inline-block',
+      padding: '1px 6px',
+      fontSize: 10,
+      fontWeight: 'bold',
+      color: meta.color,
+      border: `1px solid ${meta.color}`,
+      borderRadius: 3,
+      lineHeight: '16px',
+    }}>
+      {meta.short}
+    </span>
+  )
+}
+
 export function EncounterListPage() {
-  const [levels, setLevels] = useState<{ label: string; description: string; file: string }[]>([])
+  const [levels, setLevels] = useState<EncounterEntry[]>([])
+  const [selectedIdx, setSelectedIdx] = useState(0)
   const base = import.meta.env.BASE_URL
 
   useEffect(() => {
@@ -108,25 +147,148 @@ export function EncounterListPage() {
       .then(setLevels)
   }, [])
 
+  const visible = isDev ? levels : levels.filter((lv) => !lv.hidden)
+  const selected = visible[selectedIdx]
+  const diffMeta = selected ? (DIFFICULTY_META[selected.difficulty ?? 'normal'] ?? DIFFICULTY_META.normal) : null
+  const encId = selected?.file.replace(/\.yaml$/, '')
+
   return (
     <MenuShell>
       <BackButton href="/" />
-      {levels.map((lv) => {
-        const id = lv.file.replace(/\.yaml$/, '')
-        return (
-          <a
-            key={id}
-            href={`/encounter/${id}`}
-            class={`${btnClass} text-left`}
-            style={{ background: 'rgba(255,255,255,0.1)' }}
-          >
-            <div>{'\u25B6  '}{lv.label}</div>
-            {lv.description && (
-              <div class="text-xs text-gray-500 mt-0.5">{lv.description}</div>
-            )}
-          </a>
-        )
-      })}
+      <div style={{
+        display: 'flex', gap: 16,
+        maxWidth: 700, width: '90%',
+        height: '60vh',
+      }}>
+        {/* Left: encounter list */}
+        <div style={{
+          width: 200, flexShrink: 0,
+          display: 'flex', flexDirection: 'column', gap: 4,
+          overflowY: 'auto',
+        }}>
+          {visible.map((lv, i) => {
+            const isSelected = i === selectedIdx
+            return (
+              <button
+                key={lv.file}
+                style={{
+                  padding: '8px 12px',
+                  fontSize: 13,
+                  color: isSelected ? '#fff' : '#888',
+                  background: isSelected ? 'rgba(255,255,255,0.12)' : 'rgba(255,255,255,0.04)',
+                  border: isSelected ? '1px solid rgba(255,255,255,0.25)' : '1px solid rgba(255,255,255,0.08)',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  textAlign: 'left',
+                  display: 'flex', alignItems: 'center', gap: 8,
+                }}
+                onClick={() => setSelectedIdx(i)}
+              >
+                <DifficultyBadge difficulty={lv.difficulty} />
+                <span style={{ flex: 1 }}>{lv.label}</span>
+                {lv.hidden && <span style={{ fontSize: 9, color: '#a86' }}>[HIDDEN]</span>}
+              </button>
+            )
+          })}
+        </div>
+
+        {/* Right: detail panel */}
+        <div style={{
+          flex: 1,
+          background: 'rgba(255,255,255,0.03)',
+          border: '1px solid rgba(255,255,255,0.08)',
+          borderRadius: 6, padding: '16px 20px',
+          display: 'flex', flexDirection: 'column',
+          overflow: 'hidden',
+        }}>
+          {selected ? (
+            <>
+              {/* Header */}
+              <div style={{ flexShrink: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+                  <DifficultyBadge difficulty={selected.difficulty} />
+                  <span style={{ fontSize: 16, color: '#ddd', fontWeight: 'bold' }}>{selected.label}</span>
+                </div>
+
+                {/* Info grid */}
+                <div style={{
+                  display: 'grid', gridTemplateColumns: '1fr 1fr',
+                  gap: '4px 16px',
+                  fontSize: 12, color: '#999', lineHeight: 1.8,
+                  marginBottom: 12,
+                  paddingBottom: 12,
+                  borderBottom: '1px solid rgba(255,255,255,0.08)',
+                }}>
+                  <div><span style={{ color: '#666' }}>难度：</span>{diffMeta?.label}</div>
+                  {selected.duration && <div><span style={{ color: '#666' }}>耗时：</span>{selected.duration}</div>}
+                  {selected.dpsCheck && <div><span style={{ color: '#666' }}>DPS 门槛：</span>{selected.dpsCheck}</div>}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div style={{
+                flex: 1, overflowY: 'auto',
+                fontSize: 12, color: '#aaa', lineHeight: 2,
+                whiteSpace: 'pre-line',
+              }}>
+                {selected.description}
+              </div>
+
+              {/* Footer: practice + start buttons */}
+              <div style={{ flexShrink: 0, display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 12 }}>
+                {selected.difficulty !== 'tutorial' && selected.difficulty !== 'ultimate' && (
+                  <a
+                    href={`/encounter/${encId}?practice`}
+                    style={{
+                      padding: '8px 16px', fontSize: 12,
+                      background: 'rgba(255,255,255,0.06)',
+                      border: '1px solid rgba(255,255,255,0.15)',
+                      borderRadius: 4,
+                      color: '#999',
+                      cursor: 'pointer',
+                      textDecoration: 'none',
+                      transition: 'all 0.15s',
+                    }}
+                    onMouseEnter={(e) => {
+                      ;(e.target as HTMLElement).style.background = 'rgba(255,255,255,0.12)'
+                    }}
+                    onMouseLeave={(e) => {
+                      ;(e.target as HTMLElement).style.background = 'rgba(255,255,255,0.06)'
+                    }}
+                  >
+                    练习模式
+                  </a>
+                )}
+                <a
+                  href={`/encounter/${encId}`}
+                  style={{
+                    padding: '8px 24px', fontSize: 13,
+                    background: 'rgba(184,160,106,0.15)',
+                    border: '1px solid rgba(184,160,106,0.4)',
+                    borderRadius: 4,
+                    color: '#b8a06a',
+                    cursor: 'pointer',
+                    textDecoration: 'none',
+                    transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={(e) => {
+                    ;(e.target as HTMLElement).style.background = 'rgba(184,160,106,0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    ;(e.target as HTMLElement).style.background = 'rgba(184,160,106,0.15)'
+                  }}
+                >
+                  {'\u25B6  '}进入副本
+                </a>
+              </div>
+            </>
+          ) : (
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666', fontSize: 13 }}>
+              选择一个副本查看详情
+            </div>
+          )}
+        </div>
+      </div>
     </MenuShell>
   )
 }

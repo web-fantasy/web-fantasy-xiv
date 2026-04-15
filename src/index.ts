@@ -85,5 +85,5 @@ export type { EncounterData } from './game/encounter-loader'
 export { DevTerminal } from './devtools/dev-terminal'
 export { CommandRegistry } from './devtools/commands'
 
-// Demo
-export { startTimelineDemo } from './demo/demo-timeline'
+// Game
+export { startTimelineDemo } from './game/battle-runner'
