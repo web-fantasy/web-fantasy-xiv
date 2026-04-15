@@ -211,8 +211,8 @@ export class CombatResolver {
   }
 
   private applyDamage(caster: Entity, target: Entity, potency: number, skillName?: string, dmgTypes: DamageType[] = [], extraIncreases: number[] = []): void {
-    // Invulnerable: negate all non-special damage entirely
-    if (!dmgTypes.includes('special') && this.buffSystem.isInvulnerable(target)) {
+    // Invulnerable / damage immunity: negate all non-special damage
+    if (!dmgTypes.includes('special') && (this.buffSystem.isInvulnerable(target) || this.buffSystem.hasDamageImmunity(target))) {
       this.bus.emit('damage:invulnerable', { source: caster, target, skill: skillName ? { name: skillName } : null })
       return
     }

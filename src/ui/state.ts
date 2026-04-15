@@ -68,6 +68,7 @@ export const dialogText = signal('')
 // UI control
 export const paused = signal(false)
 export const battleResult = signal<'victory' | 'wipe' | null>(null)
+export const practiceMode = signal(false)
 export const damageLog = signal<DamageLogEntry[]>([])
 export const combatElapsed = signal<number | null>(null)
 
@@ -126,6 +127,7 @@ export function resetState(): void {
   dialogText.value = ''
   paused.value = false
   battleResult.value = null
+  practiceMode.value = false
   damageLog.value = []
   combatElapsed.value = null
   skillBarEntries.value = []

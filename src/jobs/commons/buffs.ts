@@ -54,6 +54,28 @@ export const COMMON_BUFFS: Record<string, BuffDef> = {
     shield: true,
     effects: [],
   },
+  damage_immunity: {
+    id: 'damage_immunity',
+    name: '无敌',
+    description: '除少数情况，其他所有攻击均无效。',
+    icon: icon('effects', 15024),
+    type: 'buff',
+    duration: 0,
+    stackable: false,
+    maxStacks: 1,
+    effects: [{ type: 'damage_immunity' }],
+  },
+  practice_immunity: {
+    id: 'practice_immunity',
+    name: '练习模式',
+    description: '光之战士在脑海中预想战斗。除少数情况，其他所有攻击均无效。',
+    icon: icon('effects', 15024),
+    type: 'buff',
+    duration: 0,
+    stackable: false,
+    maxStacks: 1,
+    effects: [{ type: 'damage_immunity' }],
+  },
 }
 
 // Map version for tooltip lookups

@@ -1,5 +1,5 @@
 import { useLocation } from 'preact-iso'
-import { battleResult, damageLog, combatElapsed } from '../state'
+import { battleResult, practiceMode, damageLog, combatElapsed } from '../state'
 
 interface BattleEndOverlayProps {
   onRetry: () => void
@@ -32,6 +32,7 @@ export function BattleEndOverlay({ onRetry }: BattleEndOverlayProps) {
   const { route } = useLocation()
   const log = damageLog.value
   const elapsed = combatElapsed.value
+  const isPractice = practiceMode.value
 
   const isWipe = result === 'wipe'
 
@@ -47,11 +48,22 @@ export function BattleEndOverlay({ onRetry }: BattleEndOverlayProps) {
       <h2
         style={{
           fontSize: 32, color: isWipe ? '#ff4444' : '#44ff44',
-          fontWeight: 300, letterSpacing: 6, marginBottom: 16,
+          fontWeight: 300, letterSpacing: 6, marginBottom: isPractice && !isWipe ? 6 : 16,
         }}
       >
         {isWipe ? 'DEFEATED' : 'VICTORY'}
       </h2>
+
+      {isPractice && !isWipe && (
+        <div style={{
+          fontSize: 14, color: '#c86',
+          letterSpacing: 4, marginBottom: 16,
+          border: '1px solid rgba(200,136,96,0.4)',
+          padding: '4px 16px', borderRadius: 4,
+        }}>
+          练习模式
+        </div>
+      )}
 
       {isWipe && log.length > 0 && (
         <div
@@ -105,13 +117,30 @@ export function BattleEndOverlay({ onRetry }: BattleEndOverlayProps) {
         >
           重试
         </button>
+        {isPractice && !isWipe && (
+          <button
+            style={{
+              ...btnBase,
+              padding: '10px 32px',
+              fontSize: 16,
+              background: 'rgba(200,136,96,0.2)',
+              color: '#c86',
+            }}
+            onClick={() => {
+              const path = location.pathname
+              route(path)
+            }}
+          >
+            开始正式挑战
+          </button>
+        )}
         <button
           style={{
             ...btnBase,
-            padding: isWipe ? '8px 20px' : '10px 32px',
-            fontSize: isWipe ? 13 : 16,
-            background: isWipe ? 'rgba(255,255,255,0.08)' : 'rgba(68,255,68,0.2)',
-            color: isWipe ? '#888' : '#44ff44',
+            padding: isPractice ? '8px 20px' : (isWipe ? '8px 20px' : '10px 32px'),
+            fontSize: isPractice ? 13 : (isWipe ? 13 : 16),
+            background: isPractice ? 'rgba(255,255,255,0.08)' : (isWipe ? 'rgba(255,255,255,0.08)' : 'rgba(68,255,68,0.2)'),
+            color: isPractice ? '#888' : (isWipe ? '#888' : '#44ff44'),
           }}
           onClick={() => route('/')}
         >

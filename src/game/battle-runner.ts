@@ -10,7 +10,19 @@ import { announceText, battleResult, damageLog, combatElapsed as combatElapsedSi
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
 import type { EncounterData } from '@/game/encounter-loader'
-import type { EntityType } from '@/core/types'
+import type { BuffDef, EntityType } from '@/core/types'
+import type { BuffSystem } from '@/combat/buff'
+import type { CombatResolver } from '@/game/combat-resolver'
+
+/** Context passed to the battle init callback */
+export interface BattleInitContext {
+  player: Entity
+  buffSystem: BuffSystem
+  combatResolver: CombatResolver
+  registerBuffs: (buffs: Record<string, BuffDef>) => void
+}
+
+export type BattleInitCallback = (ctx: BattleInitContext) => void
 
 let scene: GameScene | null = null
 
@@ -28,6 +40,7 @@ export async function startTimelineDemo(
   uiRoot: HTMLDivElement,
   encounterUrl?: string,
   jobOverride?: string,
+  onInit?: BattleInitCallback,
 ): Promise<void> {
   scene?.dispose()
 
@@ -46,14 +59,14 @@ export async function startTimelineDemo(
   try {
     const encounter = await loadEncounter(url)
     loading.remove()
-    initScene(canvas, uiRoot, encounter, url, jobOverride)
+    initScene(canvas, uiRoot, encounter, url, jobOverride, onInit)
   } catch (err) {
     loading.textContent = `Failed to load encounter: ${err}`
     loading.style.color = '#ff4444'
   }
 }
 
-function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData, encounterUrl: string, jobOverride?: string): void {
+function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData, encounterUrl: string, jobOverride?: string, onInit?: BattleInitCallback): void {
   const engine = Engine.Instances.find(e => e.getRenderingCanvas() === canvas) as Engine | undefined
   if (!engine) throw new Error('No Engine found for canvas')
 
@@ -70,7 +83,7 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       passiveBuffs: job.passiveBuffs,
       buffDefs: job.buffMap,
     },
-    restart: () => startTimelineDemo(canvas, uiRoot, encounterUrl, jobOverride),
+    restart: () => startTimelineDemo(canvas, uiRoot, encounterUrl, jobOverride, onInit),
   })
 
   const s = scene
@@ -112,6 +125,16 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
 
   const boss = entityMap.get('boss')!
   s.combatResolver.registerBuffs(job.buffs)
+
+  // Init callback: apply practice mode buffs, echo, etc.
+  if (onInit) {
+    onInit({
+      player: s.player,
+      buffSystem: s.buffSystem,
+      combatResolver: s.combatResolver,
+      registerBuffs: (buffs) => s.combatResolver.registerBuffs(buffs),
+    })
+  }
 
   let combatStarted = false
   const bossAutoSkill = enc.skills.get('boss_auto')

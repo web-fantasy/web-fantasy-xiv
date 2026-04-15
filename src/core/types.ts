@@ -129,6 +129,7 @@ export type BuffEffectDef =
   | { type: 'silence' }
   | { type: 'stun' }
   | { type: 'invulnerable' }                 // all non-special attacks are fully negated (no damage, no displacement)
+  | { type: 'damage_immunity' }              // all non-special damage negated, but displacement still applies
 
 export interface BuffDef {
   id: string

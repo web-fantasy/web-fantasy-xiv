@@ -123,6 +123,8 @@ export interface TimelineAction {
   spawnAttack?: number
   spawnSpeed?: number
   spawnSize?: number
+  spawnAutoAttackRange?: number
+  spawnAggroRange?: number
   // camera_roll fields
   angle?: number     // roll angle in degrees (positive = clockwise)
   snapMs?: number    // ms for snap phase

@@ -3,8 +3,9 @@ import { useRoute, useLocation } from 'preact-iso'
 import { useEngine } from '../engine-context'
 import { createStateAdapter } from '../state-adapter'
 import { startTimelineDemo, getActiveScene, disposeActiveScene } from '@/game/battle-runner'
-import { resetState, skillBarEntries as skillBarEntriesSignal, buffDefs as buffDefsSignal, selectedJobId, tooltipContext } from '../state'
-import { getJob } from '@/jobs'
+import type { BattleInitCallback } from '@/game/battle-runner'
+import { resetState, skillBarEntries as skillBarEntriesSignal, buffDefs as buffDefsSignal, selectedJobId, practiceMode, tooltipContext } from '../state'
+import { getJob, COMMON_BUFFS } from '@/jobs'
 import { BossHpBar, PlayerHpBar, PlayerMpBar } from './HpBar'
 import { PlayerCastBar, BossCastBar } from './CastBar'
 import { SkillBar } from './SkillBar'
@@ -49,6 +50,7 @@ export function GameView() {
   const [gameKey, setGameKey] = useState(0)
 
   const isTutorial = params.id === 'tutorial'
+  const isPractice = typeof location !== 'undefined' && new URLSearchParams(location.search).has('practice')
 
   useEffect(() => {
     const uiRoot = uiRef.current!
@@ -75,7 +77,18 @@ export function GameView() {
     let adapter: ReturnType<typeof createStateAdapter> | null = null
     let active = true
 
-    startTimelineDemo(canvas!, uiRoot, encounterUrl, isTutorial ? 'default' : undefined).then(() => {
+    // Build init callback for practice mode (or future features like Echo)
+    let onInit: BattleInitCallback | undefined
+    if (isPractice) {
+      practiceMode.value = true
+      onInit = (ctx) => {
+        const buff = COMMON_BUFFS.practice_immunity
+        ctx.registerBuffs({ practice_immunity: buff })
+        ctx.buffSystem.applyBuff(ctx.player, buff, 'system')
+      }
+    }
+
+    startTimelineDemo(canvas!, uiRoot, encounterUrl, isTutorial ? 'default' : undefined, onInit).then(() => {
       if (!active) return
       const scene = getActiveScene()
       if (scene) {

@@ -175,6 +175,11 @@ export class BuffSystem {
     return this.collectEffects(entity).some((e) => e.effect.type === 'invulnerable')
   }
 
+  /** Check if entity has damage immunity (damage negated, displacement still applies) */
+  hasDamageImmunity(entity: Entity): boolean {
+    return this.collectEffects(entity).some((e) => e.effect.type === 'damage_immunity')
+  }
+
   /** Get total lifesteal value (sum of all sources) */
   getLifesteal(entity: Entity): number {
     return this.collectEffects(entity)
