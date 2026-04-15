@@ -12,7 +12,7 @@ import { Arena } from '@/arena/arena'
 import { CombatResolver } from '@/game/combat-resolver'
 import type { SkillDef } from '@/core/types'
 import type { Entity } from '@/entity/entity'
-import type { PlayerJob } from './player-job'
+import type { PlayerJob } from '@/jobs'
 
 // ─── Types ──────────────────────────────────────────
 

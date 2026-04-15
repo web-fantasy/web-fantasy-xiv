@@ -1,7 +1,7 @@
 import type { BuffDef } from '@/core/types'
 import { icon, stackIcons } from './icon-paths'
 
-export const DEMO_BUFFS: Record<string, BuffDef> = {
+export const COMMON_BUFFS: Record<string, BuffDef> = {
   vulnerability: {
     id: 'vulnerability',
     name: '易伤',
@@ -57,4 +57,4 @@ export const DEMO_BUFFS: Record<string, BuffDef> = {
 }
 
 // Map version for tooltip lookups
-export const DEMO_BUFF_MAP = new Map(Object.entries(DEMO_BUFFS))
+export const COMMON_BUFF_MAP = new Map(Object.entries(COMMON_BUFFS))

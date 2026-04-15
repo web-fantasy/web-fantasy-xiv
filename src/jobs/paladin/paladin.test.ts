@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest'
-import { PLD_JOB } from './player-job'
-import { simulate, printResult, skill } from './dps-sim'
+import { PALADIN_JOB } from './index'
+import { simulate, printResult, skill } from '../sim-test-utils'
 
 it('Paladin DPS — Vanguard×4 → Holy Spirit×4 cycle', () => {
-  const job = PLD_JOB
+  const job = PALADIN_JOB
   const result = simulate(job, {
     gcdCycle: [
       skill(job, 'pld_vanguard'),

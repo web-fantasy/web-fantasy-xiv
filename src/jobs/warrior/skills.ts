@@ -1,8 +1,8 @@
 import type { SkillDef } from '@/core/types'
-import { icon } from './icon-paths'
+import { icon } from '../commons/icon-paths'
 
-export const DEMO_SKILLS: SkillDef[] = [
-  // 1: 近战单体战技
+export const WARRIOR_SKILLS: SkillDef[] = [
+  // 1: melee single-target weaponskill
   {
     id: 'slash',
     name: '重劈',
@@ -17,7 +17,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     mpCost: 0,
     effects: [{ type: 'damage', potency: 1.5 }],
   },
-  // 2: 远程单体战技
+  // 2: ranged single-target weaponskill
   {
     id: 'line_shot',
     name: '飞斧',
@@ -32,7 +32,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     mpCost: 0,
     effects: [{ type: 'damage', potency: 1 }],
   },
-  // 3: 扇形战技
+  // 3: fan-shaped AOE weaponskill
   {
     id: 'overpower',
     name: '超压斧',
@@ -54,7 +54,7 @@ export const DEMO_SKILLS: SkillDef[] = [
       effects: [{ type: 'damage', potency: 0.6 }],
     }],
   },
-  // 4: 解放（增伤10%，15s）
+  // 4: ATK +10% for 15s
   {
     id: 'embolden',
     name: '解放',
@@ -69,7 +69,7 @@ export const DEMO_SKILLS: SkillDef[] = [
     mpCost: 0,
     effects: [{ type: 'apply_buff', buffId: 'embolden' }],
   },
-  // 5: 铁壁（减伤40%，8s）
+  // 5: Mitigation 40% for 8s
   {
     id: 'rampart',
     name: '铁壁',

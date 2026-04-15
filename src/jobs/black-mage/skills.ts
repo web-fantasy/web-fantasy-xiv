@@ -1,7 +1,7 @@
-import type { SkillDef, BuffDef } from '@/core/types'
-import { icon, stackIcons } from './icon-paths'
+import type { SkillDef } from '@/core/types'
+import { icon, stackIcons } from '../commons/icon-paths'
 
-export const BLM_SKILLS: SkillDef[] = [
+export const BLACK_MAGE_SKILLS: SkillDef[] = [
   // 1: Fire — long cast, high MP cost, stacks Astral Fire, consumes all Umbral Ice
   {
     id: 'blm_fire',
@@ -111,7 +111,7 @@ export const BLM_SKILLS: SkillDef[] = [
 ]
 
 /** E key: Ley Lines dash — dash to ley lines center (requires active Ley Lines) */
-export const BLM_LEYLINE_STEP: SkillDef = {
+export const BLACK_MAGE_LEYLINE_STEP: SkillDef = {
   id: 'blm_leyline_step',
   name: '魔纹步',
     icon: icon('skill_icons/25_BLM', 2661),
@@ -126,63 +126,3 @@ export const BLM_LEYLINE_STEP: SkillDef = {
   requiresBuffs: ['blm_leylines_active'],
   effects: [{ type: 'dash_to_ley_lines' }],
 }
-
-// --- BLM buffs ---
-
-export const BLM_BUFFS: Record<string, BuffDef> = {
-  blm_astral: {
-    id: 'blm_astral',
-    name: '星极火',
-    description: '火炎每层额外增加10%威力。释放冰结时消耗1层使其即时咏唱。',
-    iconPerStack: stackIcons('player_skill_effects',10463, 3),
-    type: 'buff',
-    duration: 0,
-    stackable: true,
-    maxStacks: 3,
-    effects: [],
-  },
-  blm_umbral_ice: {
-    id: 'blm_umbral_ice',
-    name: '灵极冰',
-    description: '释放火炎时消耗1层代替MP消耗。',
-    iconPerStack: stackIcons('player_skill_effects',10466, 3),
-    type: 'buff',
-    duration: 0,
-    stackable: true,
-    maxStacks: 3,
-    effects: [],
-  },
-  blm_enochian: {
-    id: 'blm_enochian',
-    name: '天语',
-    description: '战斗中每秒自动获得2层。消耗50层可释放核爆。',
-    icon: icon('player_skill_effects',10461),
-    type: 'buff',
-    duration: 0,
-    stackable: true,
-    maxStacks: 100,
-    effects: [],
-  },
-  blm_leylines_active: {
-    id: 'blm_leylines_active',
-    name: '黑魔纹',
-    icon: icon('player_skill_effects',12653),
-    type: 'buff',
-    duration: 15000,
-    stackable: false,
-    maxStacks: 1,
-    effects: [],
-  },
-  blm_leylines_buff: {
-    id: 'blm_leylines_buff',
-    name: '黑魔纹效果',
-    icon: icon('player_skill_effects',12654),
-    type: 'buff',
-    duration: 3000,
-    stackable: false,
-    maxStacks: 1,
-    effects: [{ type: 'haste', value: 0.15 }],
-  },
-}
-
-export const BLM_BUFF_MAP = new Map(Object.entries(BLM_BUFFS))

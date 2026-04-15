@@ -1,0 +1,58 @@
+import type { BuffDef } from '@/core/types'
+import { icon, stackIcons } from '../commons/icon-paths'
+
+export const BLACK_MAGE_BUFFS: Record<string, BuffDef> = {
+  blm_astral: {
+    id: 'blm_astral',
+    name: '星极火',
+    description: '火炎每层额外增加10%威力。释放冰结时消耗1层使其即时咏唱。',
+    iconPerStack: stackIcons('player_skill_effects',10463, 3),
+    type: 'buff',
+    duration: 0,
+    stackable: true,
+    maxStacks: 3,
+    effects: [],
+  },
+  blm_umbral_ice: {
+    id: 'blm_umbral_ice',
+    name: '灵极冰',
+    description: '释放火炎时消耗1层代替MP消耗。',
+    iconPerStack: stackIcons('player_skill_effects',10466, 3),
+    type: 'buff',
+    duration: 0,
+    stackable: true,
+    maxStacks: 3,
+    effects: [],
+  },
+  blm_enochian: {
+    id: 'blm_enochian',
+    name: '天语',
+    description: '战斗中每秒自动获得2层。消耗50层可释放核爆。',
+    icon: icon('player_skill_effects',10461),
+    type: 'buff',
+    duration: 0,
+    stackable: true,
+    maxStacks: 100,
+    effects: [],
+  },
+  blm_leylines_active: {
+    id: 'blm_leylines_active',
+    name: '黑魔纹',
+    icon: icon('player_skill_effects',12653),
+    type: 'buff',
+    duration: 15000,
+    stackable: false,
+    maxStacks: 1,
+    effects: [],
+  },
+  blm_leylines_buff: {
+    id: 'blm_leylines_buff',
+    name: '黑魔纹效果',
+    icon: icon('player_skill_effects',12654),
+    type: 'buff',
+    duration: 3000,
+    stackable: false,
+    maxStacks: 1,
+    effects: [{ type: 'haste', value: 0.15 }],
+  },
+}

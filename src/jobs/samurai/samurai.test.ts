@@ -1,6 +1,6 @@
 import { it, expect } from 'vitest'
-import { SAMURAI_JOB } from './player-job'
-import { simulate, printResult, skill } from './dps-sim'
+import { SAMURAI_JOB } from './index'
+import { simulate, printResult, skill } from '../sim-test-utils'
 
 it('Samurai DPS — Setsu→Getsu→Ka→Midare cycle', () => {
   const job = SAMURAI_JOB

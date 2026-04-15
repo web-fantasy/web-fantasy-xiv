@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest'
-import { BRD_JOB } from './player-job'
-import { simulate, printResult, skill } from './dps-sim'
+import { BARD_JOB } from './index'
+import { simulate, printResult, skill } from '../sim-test-utils'
 
 it('Bard DPS — Straight Shot + song rotation + Pitch Perfect', () => {
-  const job = BRD_JOB
+  const job = BARD_JOB
   const result = simulate(job, {
     gcdCycle: [skill(job, 'brd_straight_shot')],
     ogcds: [

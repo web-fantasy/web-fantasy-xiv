@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'preact/hooks'
 import { useLocation } from 'preact-iso'
-import { JOBS, getJob, JOB_CATEGORY_LABELS } from '@/demo/player-job'
+import { JOBS, getJob, JOB_CATEGORY_LABELS } from '@/jobs'
 import { selectedJobId } from '../state'
 import { buildSkillTooltip } from '../tooltip-builders'
-import { classJobIcon } from '@/demo/icon-paths'
+import { classJobIcon } from '@/jobs'
 
 const btnClass = 'block min-w-60 px-8 py-3 my-1 text-sm text-gray-400 tracking-wide rounded border border-white/20 transition-all duration-150 hover:bg-white/20 hover:text-white cursor-pointer'
 

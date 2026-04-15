@@ -1,9 +1,9 @@
 import { it, expect } from 'vitest'
-import { BLM_JOB } from './player-job'
-import { simulate, printResult, skill } from './dps-sim'
+import { BLACK_MAGE_JOB } from './index'
+import { simulate, printResult, skill } from '../sim-test-utils'
 
 it('Black Mage DPS — Ice×3 → Fire×7 cycle + Flare at 50 Enochian', () => {
-  const job = BLM_JOB
+  const job = BLACK_MAGE_JOB
   const result = simulate(job, {
     gcdCycle: [
       // Ice phase: 1 instant (consumes AF) + 2 cast, all restore MP + gain UI
