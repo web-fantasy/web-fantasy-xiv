@@ -4,18 +4,115 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Web Fantasy XIV</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@300;400&display=swap" rel="stylesheet">
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; overflow: hidden; background: #000; }
+    html, body { width: 100%; height: 100%; overflow: hidden; background: #0a0a1a; }
     #game-canvas { width: 100%; height: 100%; display: block; outline: none; }
     #ui-overlay {
       position: absolute; top: 0; left: 0; width: 100%; height: 100%;
       pointer-events: none; font-family: 'Segoe UI', sans-serif; color: #fff;
     }
     #ui-overlay > * { pointer-events: auto; }
+
+    /* Loading screen */
+    #loading-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      background: radial-gradient(ellipse at center, #111130 0%, #07070f 100%);
+      font-family: 'Segoe UI', sans-serif;
+      transition: opacity 0.6s ease;
+    }
+    #loading-screen.fade-out { opacity: 0; pointer-events: none; }
+
+    /* Crystal */
+    .crystal-wrap {
+      position: relative; width: 80px; height: 120px;
+      animation: crystal-float 3s ease-in-out infinite;
+    }
+    .crystal {
+      position: absolute; inset: 0;
+      clip-path: polygon(50% 0%, 85% 35%, 50% 100%, 15% 35%);
+      background: linear-gradient(160deg, #a8d8ff 0%, #4a7fff 40%, #2244aa 70%, #1a1a5e 100%);
+      opacity: 0.9;
+    }
+    .crystal-shine {
+      position: absolute; inset: 0;
+      clip-path: polygon(50% 0%, 85% 35%, 50% 100%, 15% 35%);
+      background: linear-gradient(200deg, rgba(255,255,255,0.6) 0%, transparent 40%);
+      animation: crystal-shine 2.5s ease-in-out infinite;
+    }
+    .crystal-glow {
+      position: absolute; top: 10%; left: -30%; width: 160%; height: 80%;
+      background: radial-gradient(ellipse, rgba(100,160,255,0.3) 0%, transparent 70%);
+      filter: blur(10px);
+      animation: crystal-pulse 2s ease-in-out infinite;
+    }
+
+    /* Sparkles */
+    .sparkles { position: absolute; inset: -60px; }
+    .sparkle {
+      position: absolute; width: 3px; height: 3px; border-radius: 50%;
+      background: #c8e0ff; box-shadow: 0 0 6px 2px rgba(160,200,255,0.6);
+    }
+    .sparkle:nth-child(1) { top: 15%; left: 10%; animation: sparkle-drift 3.0s 0.0s ease-in-out infinite; }
+    .sparkle:nth-child(2) { top: 30%; left: 85%; animation: sparkle-drift 2.6s 0.4s ease-in-out infinite; }
+    .sparkle:nth-child(3) { top: 60%; left: 5%;  animation: sparkle-drift 3.2s 0.8s ease-in-out infinite; }
+    .sparkle:nth-child(4) { top: 75%; left: 90%; animation: sparkle-drift 2.8s 1.2s ease-in-out infinite; }
+    .sparkle:nth-child(5) { top: 10%; left: 50%; animation: sparkle-drift 3.4s 0.2s ease-in-out infinite; }
+    .sparkle:nth-child(6) { top: 85%; left: 40%; animation: sparkle-drift 2.4s 0.6s ease-in-out infinite; }
+    .sparkle:nth-child(7) { top: 45%; left: 15%; animation: sparkle-drift 3.1s 1.0s ease-in-out infinite; }
+    .sparkle:nth-child(8) { top: 50%; left: 80%; animation: sparkle-drift 2.9s 1.4s ease-in-out infinite; }
+
+    /* Text */
+    .loading-text {
+      margin-top: 40px; font-size: 14px; letter-spacing: 4px; text-transform: uppercase;
+      color: rgba(160, 200, 255, 0.7);
+      animation: text-pulse 2s ease-in-out infinite;
+    }
+
+    /* Keyframes */
+    @keyframes crystal-float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
+    }
+    @keyframes crystal-shine {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 0.8; }
+    }
+    @keyframes crystal-pulse {
+      0%, 100% { opacity: 0.5; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+    @keyframes sparkle-drift {
+      0%   { opacity: 0; transform: translateY(0) scale(0.5); }
+      30%  { opacity: 1; transform: translateY(-10px) scale(1); }
+      70%  { opacity: 1; transform: translateY(-20px) scale(1); }
+      100% { opacity: 0; transform: translateY(-30px) scale(0.5); }
+    }
+    @keyframes text-pulse {
+      0%, 100% { opacity: 0.5; }
+      50% { opacity: 1; }
+    }
   </style>
 </head>
 <body>
+  <div id="loading-screen">
+    <div class="crystal-wrap">
+      <div class="crystal-glow"></div>
+      <div class="crystal"></div>
+      <div class="crystal-shine"></div>
+      <div class="sparkles">
+        <div class="sparkle"></div><div class="sparkle"></div>
+        <div class="sparkle"></div><div class="sparkle"></div>
+        <div class="sparkle"></div><div class="sparkle"></div>
+        <div class="sparkle"></div><div class="sparkle"></div>
+      </div>
+    </div>
+    <div class="loading-text">Now Loading</div>
+  </div>
   <div id="app" style="width:100%;height:100%;"></div>
   <script type="module" src="/src/main.tsx"></script>
 </body>
