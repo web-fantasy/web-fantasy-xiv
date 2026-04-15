@@ -15,7 +15,7 @@ export const BRD_SKILLS: SkillDef[] = [
     requiresTarget: true,
     range: 10,
     mpCost: 0,
-    effects: [{ type: 'damage', potency: 1.2 }],
+    effects: [{ type: 'damage', potency: 1.0 }],
   },
   // 2: Mage's Ballad — ATK +10% for 18s, replaces other songs
   {
@@ -85,7 +85,7 @@ export const BRD_SKILLS: SkillDef[] = [
     range: 10,
     mpCost: 0,
     requiresBuffStacks: { buffId: 'brd_pitch', stacks: 1 },
-    potencyPerStack: { buffId: 'brd_pitch', bonus: 1.5 },
+    potencyPerStack: { buffId: 'brd_pitch', bonus: 1.36 },
     effects: [
       { type: 'damage', potency: 0 },
       { type: 'consume_all_buff_stacks', buffId: 'brd_pitch' },
@@ -105,7 +105,7 @@ export const BRD_BUFFS: Record<string, BuffDef> = {
     duration: 18000,
     stackable: false,
     maxStacks: 1,
-    effects: [{ type: 'damage_increase', value: 0.1 }],
+    effects: [{ type: 'damage_increase', value: 0.15 }],
   },
   brd_paeon: {
     id: 'brd_paeon',
@@ -116,7 +116,7 @@ export const BRD_BUFFS: Record<string, BuffDef> = {
     duration: 18000,
     stackable: false,
     maxStacks: 1,
-    effects: [{ type: 'haste', value: 0.16 }],
+    effects: [{ type: 'haste', value: 0.20 }],
   },
   brd_minuet: {
     id: 'brd_minuet',

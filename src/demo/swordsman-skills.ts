@@ -16,7 +16,7 @@ export const SAMURAI_SKILLS: SkillDef[] = [
     range: 4,
     mpCost: 0,
     effects: [
-      { type: 'damage', potency: 1.0 },
+      { type: 'damage', potency: 0.8 },
       { type: 'apply_buff', buffId: 'sam_setsu' },
     ],
   },
@@ -34,7 +34,7 @@ export const SAMURAI_SKILLS: SkillDef[] = [
     range: 4,
     mpCost: 0,
     effects: [
-      { type: 'damage', potency: 1.0 },
+      { type: 'damage', potency: 0.8 },
       { type: 'apply_buff', buffId: 'sam_getsu' },
     ],
   },
@@ -52,7 +52,7 @@ export const SAMURAI_SKILLS: SkillDef[] = [
     range: 4,
     mpCost: 0,
     effects: [
-      { type: 'damage', potency: 1.0 },
+      { type: 'damage', potency: 0.8 },
       { type: 'apply_buff', buffId: 'sam_ka' },
     ],
   },
@@ -76,7 +76,7 @@ export const SAMURAI_SKILLS: SkillDef[] = [
       shape: { type: 'fan', radius: 8, angle: 120 },
       resolveDelay: 800, // match castTime: telegraph during cast, resolve on completion
       hitEffectDuration: 500,
-      effects: [{ type: 'damage', potency: 6.0 }],
+      effects: [{ type: 'damage', potency: 4.8 }],
     }],
     effects: [
       { type: 'consume_buffs', buffIds: ['sam_setsu', 'sam_getsu', 'sam_ka'] },

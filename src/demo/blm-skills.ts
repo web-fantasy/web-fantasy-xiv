@@ -16,9 +16,9 @@ export const BLM_SKILLS: SkillDef[] = [
     range: 20,
     mpCost: 2500,
     mpCostAbsorbBuff: 'blm_umbral_ice',
-    potencyPerStack: { buffId: 'blm_astral', bonus: 0.35 },
+    potencyPerStack: { buffId: 'blm_astral', bonus: 0.29 },
     effects: [
-      { type: 'damage', potency: 3.5 },
+      { type: 'damage', potency: 2.9 },
       { type: 'apply_buff', buffId: 'blm_astral' },
     ],
   },
@@ -38,7 +38,7 @@ export const BLM_SKILLS: SkillDef[] = [
     mpCost: 0,
     castTimeWithBuff: { buffId: 'blm_astral', castTime: 0, consumeStack: true },
     effects: [
-      { type: 'damage', potency: 0.5 },
+      { type: 'damage', potency: 0.42 },
       { type: 'restore_mp', percent: 0.35 },
       { type: 'apply_buff', buffId: 'blm_umbral_ice' },
     ],
@@ -63,7 +63,7 @@ export const BLM_SKILLS: SkillDef[] = [
       shape: { type: 'circle', radius: 5 },
       resolveDelay: 0,
       hitEffectDuration: 500,
-      effects: [{ type: 'damage', potency: 6.0 }],
+      effects: [{ type: 'damage', potency: 5.0 }],
     }],
     effects: [
       { type: 'consume_buff_stacks', buffId: 'blm_enochian', stacks: 50 },
@@ -133,7 +133,7 @@ export const BLM_BUFFS: Record<string, BuffDef> = {
   blm_astral: {
     id: 'blm_astral',
     name: '星极火',
-    description: '火炎每层额外增加35%威力。释放冰结时消耗1层使其即时咏唱。',
+    description: '火炎每层额外增加10%威力。释放冰结时消耗1层使其即时咏唱。',
     iconPerStack: stackIcons('player_skill_effects',10463, 3),
     type: 'buff',
     duration: 0,

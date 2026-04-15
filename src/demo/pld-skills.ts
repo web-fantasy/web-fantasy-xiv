@@ -17,7 +17,7 @@ export const PLD_SKILLS: SkillDef[] = [
     mpCost: 0,
     potencyWithBuff: { buffId: 'pld_fof', damageIncrease: 0.25, consumeStack: true, restoreMp: 2000 },
     effects: [
-      { type: 'damage', potency: 2.0 },
+      { type: 'damage', potency: 1.4 },
       { type: 'apply_buff', buffId: 'pld_requiescat' },
     ],
   },
@@ -36,7 +36,7 @@ export const PLD_SKILLS: SkillDef[] = [
     mpCost: 2250,
     castTimeWithBuff: { buffId: 'pld_requiescat', castTime: 0, consumeStack: true },
     effects: [
-      { type: 'damage', potency: 3.0, dmgType: 'magical' },
+      { type: 'damage', potency: 2.1, dmgType: 'magical' },
       { type: 'heal', potency: 0.5 },
       { type: 'apply_buff', buffId: 'pld_fof' },
     ],

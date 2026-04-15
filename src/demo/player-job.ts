@@ -117,7 +117,7 @@ export const SAMURAI_JOB: PlayerJob = {
   stats: {
     hp: 11000,
     mp: 8000,
-    attack: 1000,
+    attack: 1250,
     speed: 5,
     autoAttackRange: 3.5,
     gcdDuration: 2350,
@@ -139,7 +139,7 @@ export const BLM_JOB: PlayerJob = {
   stats: {
     hp: 8000,
     mp: 10000,
-    attack: 1000,
+    attack: 1200,
     speed: 5,
     autoAttackRange: 3.5,
     noMpRegen: true,
@@ -164,7 +164,7 @@ export const BRD_JOB: PlayerJob = {
   stats: {
     hp: 9500,
     mp: 10000,
-    attack: 1000,
+    attack: 1100,
     speed: 5,
     autoAttackRange: 10,
     gcdDuration: 2300,
