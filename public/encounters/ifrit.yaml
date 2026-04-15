@@ -10,7 +10,7 @@ arena:
 boss:
   name: Test Boss
   type: boss
-  hp: 85000
+  hp: 36000
   attack: 1
   speed: 4
   size: 1.5
