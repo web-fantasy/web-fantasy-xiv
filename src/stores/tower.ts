@@ -8,7 +8,7 @@
 // **Phase 1 only**: no graph generation or combat logic. All graph/combat
 // related calls are deferred to Phase 2+.
 import { defineStore } from 'pinia'
-import { ref, computed, watch, toRaw, type Ref } from 'vue'
+import { ref, computed, watch, toRaw, nextTick, type Ref } from 'vue'
 import type { TowerRun, TowerRunPhase, BaseJobId } from '@/tower/types'
 import { saveTowerRun, loadTowerRun, clearTowerRun } from '@/tower/persistence'
 
@@ -72,6 +72,8 @@ export const useTowerStore = defineStore('tower', () => {
   let suppressPersist = false
 
   // ---- derived ----
+  // NOTE: Phase 3 contract surface — consumed by the job-selection flow.
+  // Exported now so pages/composables can bind without further store churn.
   const currentBaseJobId = computed(() => run.value?.baseJobId ?? null)
 
   // ---- actions ----
@@ -89,8 +91,11 @@ export const useTowerStore = defineStore('tower', () => {
     phase.value = 'in-path'
     savedRunExists.value = true
     // Restore persistence after Vue's flush cycle so the phase watch doesn't
-    // fire a spurious save for the load itself.
-    await Promise.resolve()
+    // fire a spurious save for the load itself. nextTick() waits for all
+    // pending post-flush watchers (including our persistence hook) to run —
+    // a single microtask is not sufficient because `flush: 'post'` callbacks
+    // queue behind Vue's component post-flush queue and may take multiple ticks.
+    await nextTick()
     suppressPersist = false
   }
 

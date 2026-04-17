@@ -1,6 +1,7 @@
 // src/stores/tower.test.ts
 import { beforeEach, afterEach, describe, it, expect, vi } from 'vitest'
 import { createPinia, setActivePinia } from 'pinia'
+import { nextTick } from 'vue'
 import { useTowerStore } from '@/stores/tower'
 import * as persistence from '@/tower/persistence'
 
@@ -116,6 +117,39 @@ describe('useTowerStore', () => {
     await store.continueLastRun()
     expect(store.phase).toBe('no-run')
     expect(store.run).toBeNull()
+  })
+
+  it('continueLastRun does not trigger a redundant save after load', async () => {
+    // Seed IndexedDB with a run first
+    await persistence.saveTowerRun({
+      runId: 'no-redundant-save',
+      seed: 'seed',
+      graphSource: { kind: 'random' },
+      startedAt: 0,
+      baseJobId: 'swordsman',
+      towerGraph: { startNodeId: 0, bossNodeId: 13, nodes: {} },
+      currentNodeId: 0,
+      determination: 5,
+      maxDetermination: 5,
+      level: 1,
+      crystals: 0,
+      currentWeapon: null,
+      advancedJobId: null,
+      materia: [],
+      activatedMateria: [],
+      relics: [],
+      scoutedNodes: {},
+      completedNodes: [],
+    })
+    const store = useTowerStore()
+    const spy = vi.spyOn(persistence, 'saveTowerRun')
+    await store.continueLastRun()
+    // Let Vue's flush:post watchers fire
+    await nextTick()
+    await nextTick()
+    // The 'no-run' → 'in-path' transition caused by load must NOT trigger
+    // a write-back — suppressPersist should cover the whole flush cycle.
+    expect(spy).not.toHaveBeenCalled()
   })
 
   it('hydrate() updates savedRunExists from IndexedDB', async () => {
