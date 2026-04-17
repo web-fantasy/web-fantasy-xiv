@@ -4,6 +4,12 @@
 // This module only defines the contract — no handlers are registered here.
 // Future tasks (stores, scene code) import TOWER_EVENTS.* and use
 // onTowerEvent / emitTowerEvent to stay type-safe.
+//
+// Bus instance strategy (deferred to Phase 2): callers pass their own EventBus
+// instance. Phase 2 will introduce a module-level `towerBus` singleton (or a
+// Pinia-store-held reference) so all tower code shares one pub/sub channel.
+// For Phase 1, no runtime caller exists yet, so the decision is intentionally
+// left open.
 import type { EventBus } from '@/core/event-bus'
 import type { TowerRunPhase } from './types'
 
