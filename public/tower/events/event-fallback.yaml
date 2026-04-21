@@ -1,0 +1,7 @@
+id: event-fallback
+title: 什么也没发生
+description: 你警觉地环顾四周，但一切安然无事。
+options:
+  - id: continue
+    label: 继续前行
+    outcomes: []

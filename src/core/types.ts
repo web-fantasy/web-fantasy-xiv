@@ -132,6 +132,8 @@ export type BuffEffectDef =
   | { type: 'damage_immunity' }              // all non-special damage negated, but displacement still applies
   | { type: 'mp_regen'; potency: number; interval: number }
   | { type: 'next_cast_instant'; consumeOnCast: boolean }
+  | { type: 'attack_modifier'; value: number }   // base attack × (1 + sum)
+  | { type: 'max_hp_modifier'; value: number }   // base maxHp × (1 + sum)
 
 export interface BuffDef {
   id: string

@@ -1,0 +1,14 @@
+id: battle-trap
+title: 战斗陷阱
+description: 你触发了一处陷阱，前方笼罩着诡异的迷雾。
+options:
+  - id: tank
+    label: 硬扛（-1 决心）
+    outcomes:
+      - { kind: determination, delta: -1 }
+  - id: bypass
+    label: 付 6 水晶绕路
+    requires:
+      crystals: { $gte: 6 }
+    outcomes:
+      - { kind: crystals, delta: -6 }

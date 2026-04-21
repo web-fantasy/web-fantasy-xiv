@@ -139,6 +139,8 @@ export interface TowerNode {
    * 非战斗节点 undefined。新开局在 startDescent 时按 seed 从 Active Pool 抽取。
    */
   encounterId?: string
+  /** 事件节点开局固化的 event id；非事件节点 undefined */
+  eventId?: string
 }
 
 export interface TowerGraph {
@@ -163,6 +165,99 @@ export interface ScoutInfo {
   /** 展示给玩家的敌人简述；非战斗节点为 null */
   enemySummary: string | null
 }
+
+// ============================================================
+// 事件节点 (Event) — spec §2.3 / phase 5
+// ============================================================
+
+/**
+ * MongoDB-like numeric comparator for EventRequirement predicates.
+ * Supported operators: `$gte / $lte / $gt / $lt / $eq / $ne`.
+ * Multiple operators on the same field are combined with AND.
+ * `$not / $or / $and / $in` are intentionally out of scope (P5-D-10 backlog).
+ */
+export type NumberComparator = {
+  $gte?: number
+  $lte?: number
+  $gt?: number
+  $lt?: number
+  $eq?: number
+  $ne?: number
+}
+
+/**
+ * Requirement predicate gating an EventOption.
+ * Multiple fields are combined with AND.
+ * Future phases may add `weaponId` / `advancedJobId` with a string comparator.
+ */
+export type EventRequirement = {
+  determination?: NumberComparator
+  crystals?: NumberComparator
+}
+
+/**
+ * EventOption outcome discriminated by `kind`.
+ * MVP supports crystals/determination delta only (P5-D-02).
+ */
+export type EventOutcome =
+  | { kind: 'crystals'; delta: number }
+  | { kind: 'determination'; delta: number }
+
+export interface EventOptionDef {
+  id: string
+  label: string
+  /** Gating predicate; undefined = always available */
+  requires?: EventRequirement
+  /** Ordered list of effects applied when the option is picked */
+  outcomes: EventOutcome[]
+}
+
+export interface EventDef {
+  id: string
+  title: string
+  description: string
+  options: EventOptionDef[]
+}
+
+// ============================================================
+// Determination change interceptor — spec §3.7 / phase 5
+// ============================================================
+
+/**
+ * Intent describing a proposed determination change.
+ * `(string & {})` preserves union-literal autocomplete while still allowing
+ * arbitrary source strings for forward compatibility (策略卡 / buff sources).
+ */
+export type DeterminationChangeIntent = {
+  source:
+    | 'mob-wipe'
+    | 'elite-wipe'
+    | 'boss-wipe'
+    | 'event'
+    | 'campfire-offer'
+    | (string & {})
+  delta: number
+  encounterId?: string
+  eventId?: string
+}
+
+/** Result piped through the interceptor chain. `cancelled` short-circuits. */
+export type DeterminationChangeResult = {
+  delta: number
+  cancelled: boolean
+  cancelReason?: string
+}
+
+/**
+ * Interceptor signature. Each interceptor sees the original intent plus the
+ * current in-flight result; returns a new result. Returning `cancelled: true`
+ * terminates the chain — later interceptors are not invoked, and the store
+ * does NOT apply the delta.
+ */
+export type DeterminationInterceptor = (
+  intent: DeterminationChangeIntent,
+  current: DeterminationChangeResult,
+) => DeterminationChangeResult
 
 // ============================================================
 // 塔图来源 (graph source)

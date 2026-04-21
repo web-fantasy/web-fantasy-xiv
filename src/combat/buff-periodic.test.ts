@@ -536,6 +536,40 @@ describe('periodic framework — spec §5.4 scenarios', () => {
     expect(target.hp).toBe(100000 - 351 * 2) // still 351 each
   })
 
+  it('buildPeriodicSnapshot attack_modifier integration: snapshots caster.attack including attack_modifier buffs', () => {
+    const { buffSystem, caster, target } = setup()
+    // caster.attack = 900 (baseAttack 900) → getAttack = 900 × 1.25 = 1125
+    const atkModDef: BuffDef = {
+      id: 'atk_mod', name: 'ATK Mod', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'attack_modifier', value: 0.25 }],
+    }
+    buffSystem.applyBuff(caster, atkModDef, 'self')
+
+    const snap = buildPeriodicSnapshot(
+      { type: 'dot', potency: 0.3, interval: 3000 },
+      caster, target, buffSystem,
+    )
+    expect(snap.attack).toBe(1125)
+  })
+
+  it('buildPeriodicSnapshot attack_modifier integration: snapshot is frozen — removing attack_modifier after apply does not affect snapshotted value', () => {
+    const { buffSystem, caster, target } = setup()
+    const atkModDef: BuffDef = {
+      id: 'atk_mod', name: 'ATK Mod', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'attack_modifier', value: 0.25 }],
+    }
+    buffSystem.applyBuff(caster, atkModDef, 'self')
+
+    applyPeriodicBuff(target, VENOM_DEF, caster, 0, buffSystem)
+
+    // remove atk_mod after DoT applied — snapshot should still carry the buffed attack
+    buffSystem.removeBuff(caster, 'atk_mod')
+
+    tickPeriodicBuffs([target], 3000, buffSystem)
+    // damage = snapshot.attack (1125) × potency 0.3 = 337.5 → floor 337
+    expect(target.hp).toBe(100000 - 337)
+  })
+
   it('scenario F: caster death does not stop DoT, target live effects continue', () => {
     const { buffSystem, caster, target } = freshSetup()
     applyPeriodicBuff(target, VENOM_DEF, caster, 0, buffSystem)

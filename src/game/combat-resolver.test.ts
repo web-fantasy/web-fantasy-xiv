@@ -6,7 +6,7 @@ import { Arena } from '@/arena/arena'
 import { CombatResolver } from './combat-resolver'
 import type { SkillDef, BuffDef } from '@/core/types'
 
-function setup(opts?: { playerHp?: number; playerMaxHp?: number; playerMp?: number; playerMaxMp?: number; playerAttack?: number; bossAttack?: number }) {
+function setup(opts?: { playerHp?: number; playerMaxHp?: number; playerMp?: number; playerMaxMp?: number; playerAttack?: number; bossAttack?: number; bossHp?: number }) {
   const bus = new EventBus()
   const entityMgr = new EntityManager(bus)
   const buffSystem = new BuffSystem(bus)
@@ -15,7 +15,7 @@ function setup(opts?: { playerHp?: number; playerMaxHp?: number; playerMp?: numb
 
   const playerMaxHp = opts?.playerMaxHp ?? 10000
   const playerMaxMp = opts?.playerMaxMp ?? 10000
-  const boss = entityMgr.create({ id: 'boss', type: 'boss', attack: opts?.bossAttack ?? 1, hp: 999999 })
+  const boss = entityMgr.create({ id: 'boss', type: 'boss', attack: opts?.bossAttack ?? 1, hp: opts?.bossHp ?? 999999 })
   const player = entityMgr.create({
     id: 'player', type: 'player',
     attack: opts?.playerAttack ?? 100,
@@ -754,5 +754,24 @@ describe('CombatResolver — potencyWithBuff', () => {
 
     // damage = 1000 * 2.0 * (1 + 0.2 + 0.25) = 2900
     expect(spy.mock.calls[0][0].amount).toBe(2900)
+  })
+})
+
+// ─── attack_modifier integration ───────────────────────
+
+describe('CombatResolver — attack_modifier integration', () => {
+  it('direct skill damage uses getAttack (base × 1+modifier)', () => {
+    const { bus, buffSystem, player, boss } = setup({ playerAttack: 1000, bossHp: 999999 })
+    const atkModDef: BuffDef = {
+      id: 'atk_mod', name: 'ATK Mod', type: 'buff',
+      duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'attack_modifier', value: 0.50 }],
+    }
+    buffSystem.applyBuff(player, atkModDef, 'self')
+    // getAttack = 1000 × 1.50 = 1500; damage = 1500 × potency(2) = 3000
+    castSkill(bus, player, makeSkill({
+      id: 'hit', effects: [{ type: 'damage', potency: 2 }],
+    }))
+    expect(boss.hp).toBe(999999 - 3000)
   })
 })

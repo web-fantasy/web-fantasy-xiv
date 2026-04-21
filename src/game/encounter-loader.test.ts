@@ -145,6 +145,37 @@ timeline: []
   })
 })
 
+describe('encounter-loader conditions field', () => {
+  const WITH_CONDITIONS = `
+arena: { name: t, shape: circle, radius: 15, boundary: wall }
+entities: { boss: { type: mob, group: boss, hp: 100, attack: 1, speed: 1, size: 1, facing: 0, position: { x: 0, y: 0, z: 0 }, autoAttackRange: 4, aggroRange: 8 } }
+player: { position: { x: 0, y: -12, z: 0 } }
+boss_ai: { chaseRange: 4, autoAttackRange: 4, autoAttackInterval: 3000, aggroRange: 8 }
+local_skills: {}
+skills: {}
+phases: { phase_default: { actions: [] } }
+conditions: [echo-boss]
+`
+
+  it('parses conditions: string[]', () => {
+    const data = parseEncounterYaml(WITH_CONDITIONS)
+    expect(data.conditions).toEqual(['echo-boss'])
+  })
+
+  it('absent conditions → undefined', () => {
+    const data = parseEncounterYaml(MINIMAL_YAML)
+    expect(data.conditions).toBeUndefined()
+  })
+
+  it('throws on non-array conditions', () => {
+    expect(() => parseEncounterYaml(WITH_CONDITIONS.replace('[echo-boss]', '"not-an-array"'))).toThrow(/conditions.*array/i)
+  })
+
+  it('throws on non-string conditions entries', () => {
+    expect(() => parseEncounterYaml(WITH_CONDITIONS.replace('[echo-boss]', '[123]'))).toThrow(/conditions.*string/i)
+  })
+})
+
 describe('encounter-loader local_buffs', () => {
   it('parses local_buffs section into localBuffs map', () => {
     const yaml = `

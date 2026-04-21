@@ -1,0 +1,18 @@
+{
+  "manifestVersion": 1,
+  "entries": [
+    {
+      "id": "echo-boss",
+      "kind": "echo",
+      "params": { "determinationThreshold": 2, "allStatsBonusPct": 0.25 },
+      "scoutSummary": "决心 ≤ 2 时获得超越之力（攻防血 +25%）"
+    },
+    {
+      "id": "echo-fallback",
+      "kind": "echo",
+      "params": { "determinationThreshold": 0, "allStatsBonusPct": 0 },
+      "scoutSummary": "（fallback，永不触发）",
+      "deprecated": "never-in-pool"
+    }
+  ]
+}

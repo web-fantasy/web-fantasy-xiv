@@ -1,0 +1,11 @@
+{
+  "manifestVersion": 1,
+  "entries": [
+    { "id": "healing-oasis", "yamlPath": "tower/events/healing-oasis.yaml" },
+    { "id": "pilgrim-trade", "yamlPath": "tower/events/pilgrim-trade.yaml" },
+    { "id": "battle-trap", "yamlPath": "tower/events/battle-trap.yaml" },
+    { "id": "training-dummy", "yamlPath": "tower/events/training-dummy.yaml" },
+    { "id": "mystic-stele", "yamlPath": "tower/events/mystic-stele.yaml" },
+    { "id": "event-fallback", "yamlPath": "tower/events/event-fallback.yaml", "deprecated": "never-in-pool" }
+  ]
+}

@@ -30,6 +30,27 @@
       "rewards": { "crystals": 10 }
     },
     {
+      "id": "elite-fortune-trial",
+      "yamlPath": "encounters/tower/elite-fortune-trial.yaml",
+      "kind": "elite",
+      "scoutSummary": "命运试炼者：限时 DPS check + 答错叠 debuff",
+      "rewards": { "crystals": 35 }
+    },
+    {
+      "id": "elite-aoe-marathon",
+      "yamlPath": "encounters/tower/elite-aoe-marathon.yaml",
+      "kind": "elite",
+      "scoutSummary": "无尽风暴：连环 AOE 高密度躲避",
+      "rewards": { "crystals": 35 }
+    },
+    {
+      "id": "boss-tower-warden",
+      "yamlPath": "encounters/tower/boss-tower-warden.yaml",
+      "kind": "boss",
+      "scoutSummary": "塔之守望者：三阶段 + 硬狂暴",
+      "rewards": { "crystals": 80 }
+    },
+    {
       "id": "mob-fallback",
       "yamlPath": "encounters/tower/mob-fallback.yaml",
       "kind": "mob",

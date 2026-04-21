@@ -26,6 +26,7 @@ export class DevTerminal {
       background: rgba(0, 0, 0, 0.85); display: none;
       flex-direction: column; z-index: 200; font-family: monospace;
       border-bottom: 1px solid rgba(255,255,255,0.15);
+      pointer-events: auto;
     `
 
     this.logEl = document.createElement('div')

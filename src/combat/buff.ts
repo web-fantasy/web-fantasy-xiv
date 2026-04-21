@@ -48,6 +48,7 @@ export class BuffSystem {
       } else {
         entity.buffs.push({ defId: def.id, sourceId, remaining: effectiveDuration, stacks: addStacks })
         this.bus.emit('buff:applied', { target: entity, buff: def, source: sourceId })
+        this.syncModifiers(entity)
       }
       return
     }
@@ -63,6 +64,7 @@ export class BuffSystem {
       existing.stacks = Math.min(existing.stacks + addStacks, def.maxStacks)
       existing.remaining = Math.max(existing.remaining, effectiveDuration)
       existing.sourceId = sourceId
+      this.syncModifiers(entity)
       return
     }
 
@@ -74,6 +76,7 @@ export class BuffSystem {
     })
 
     this.bus.emit('buff:applied', { target: entity, buff: def, source: sourceId })
+    this.syncModifiers(entity)
   }
 
   hasBuff(entity: Entity, defId: string): boolean {
@@ -100,16 +103,38 @@ export class BuffSystem {
     const idx = entity.buffs.findIndex((b) => b.defId === defId)
     if (idx === -1) return
     entity.buffs.splice(idx, 1)
+    this.syncModifiers(entity)
     this.bus.emit('buff:removed', { target: entity, buff: this.defs.get(defId), reason })
   }
 
+  /**
+   * Remove all buffs from entity where `preserveOnDeath !== true`.
+   * Intended to be called on entity death (wired in from battle-runner's
+   * death-window handling in a later task).
+   *
+   * Phase 5 has no visible consumer scenario: the echo buff is bound to scene
+   * lifetime (destroyed on scene dispose) and retry re-spawns a fresh entity
+   * with empty buffs. This hook exists as a contract reservation for future
+   * raise / in-combat respawn systems, so the `preserveOnDeath` flag has a
+   * single canonical enforcement site.
+   */
+  clearDeathBuffs(entity: Entity): void {
+    entity.buffs = entity.buffs.filter((inst) => {
+      const def = this.defs.get(inst.defId)
+      return def?.preserveOnDeath === true
+    })
+    this.syncModifiers(entity)
+  }
+
   update(entity: Entity, dt: number): void {
+    let changed = false
     for (let i = entity.buffs.length - 1; i >= 0; i--) {
       const inst = entity.buffs[i]
       if (inst.remaining === 0) continue // permanent
       inst.remaining = Math.max(0, inst.remaining - dt)
       if (inst.remaining <= 0) {
         entity.buffs.splice(i, 1)
+        changed = true
         this.bus.emit('buff:removed', {
           target: entity,
           buff: this.defs.get(inst.defId),
@@ -117,6 +142,7 @@ export class BuffSystem {
         })
       }
     }
+    if (changed) this.syncModifiers(entity)
   }
 
   private collectEffects(entity: Entity): { def: BuffDef; inst: BuffInstance; effect: BuffEffectDef }[] {
@@ -141,6 +167,48 @@ export class BuffSystem {
     return this.collectEffects(entity)
       .filter((e) => e.effect.type === 'damage_increase')
       .map((e) => (e.effect as { type: 'damage_increase'; value: number }).value)
+  }
+
+  getAttackModifier(entity: Entity): number {
+    const raw = this.collectEffects(entity)
+      .filter((e) => e.effect.type === 'attack_modifier')
+      .reduce((sum, e) => sum + (e.effect as { type: 'attack_modifier'; value: number }).value * e.inst.stacks, 0)
+    return Math.round(raw * 10000) / 10000
+  }
+
+  getMaxHpModifier(entity: Entity): number {
+    const raw = this.collectEffects(entity)
+      .filter((e) => e.effect.type === 'max_hp_modifier')
+      .reduce((sum, e) => sum + (e.effect as { type: 'max_hp_modifier'; value: number }).value * e.inst.stacks, 0)
+    return Math.round(raw * 10000) / 10000
+  }
+
+  /**
+   * Derived attack = baseAttack × (1 + sum of attack_modifier effects).
+   * Delegates to entity.attack getter which reads the synced `attackModifier` field.
+   */
+  getAttack(entity: Entity): number {
+    return entity.attack
+  }
+
+  /**
+   * Derived maxHp = baseMaxHp × (1 + sum of max_hp_modifier effects).
+   * Delegates to entity.maxHp getter which reads the synced `maxHpModifier` field.
+   */
+  getMaxHp(entity: Entity): number {
+    return entity.maxHp
+  }
+
+  private syncModifiers(entity: Entity): void {
+    entity.attackModifier = this.getAttackModifier(entity)
+    entity.maxHpModifier = this.getMaxHpModifier(entity)
+    if (entity.hp > entity.maxHp) entity.hp = entity.maxHp
+    if (entity.maxHp <= 0 && entity.alive) {
+      entity.hp = 0
+      entity.mp = 0
+      entity.alive = false
+      this.bus.emit('entity:died', { entity })
+    }
   }
 
   /** Get total vulnerability on target (additive, per-stack × stacks) */
@@ -202,6 +270,7 @@ export class BuffSystem {
   /** Absorb damage with shield buffs (stacks = shield HP). Returns damage remaining after absorption. */
   absorbShield(entity: Entity, damage: number): number {
     let remaining = damage
+    let changed = false
     for (let i = entity.buffs.length - 1; i >= 0; i--) {
       if (remaining <= 0) break
       const inst = entity.buffs[i]
@@ -212,9 +281,11 @@ export class BuffSystem {
       remaining -= absorbed
       if (inst.stacks <= 0) {
         entity.buffs.splice(i, 1)
+        changed = true
         this.bus.emit('buff:removed', { target: entity, buff: def, reason: 'shield_broken' })
       }
     }
+    if (changed) this.syncModifiers(entity)
     return remaining
   }
 

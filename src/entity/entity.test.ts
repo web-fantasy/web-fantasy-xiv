@@ -44,3 +44,23 @@ describe('createEntity', () => {
     expect(e.facing).toBe(0)
   })
 })
+
+describe('createEntity base stats', () => {
+  it('initializes baseAttack = opts.attack', () => {
+    const e = createEntity({ id: 'p', type: 'player', attack: 1234 })
+    expect(e.baseAttack).toBe(1234)
+    expect(e.attack).toBe(1234)  // init snapshot matches base
+  })
+
+  it('initializes baseMaxHp = opts.hp', () => {
+    const e = createEntity({ id: 'p', type: 'player', hp: 99999 })
+    expect(e.baseMaxHp).toBe(99999)
+    expect(e.maxHp).toBe(99999)
+  })
+
+  it('defaults baseAttack / baseMaxHp to 0 when opts omitted', () => {
+    const e = createEntity({ id: 'p', type: 'player' })
+    expect(e.baseAttack).toBe(0)
+    expect(e.baseMaxHp).toBe(0)
+  })
+})

@@ -55,10 +55,20 @@ export interface Entity {
   size: number
 
   hp: number
-  maxHp: number
+  /** Derived maxHp = baseMaxHp × (1 + maxHpModifier). Maintained as a getter; BuffSystem syncs `maxHpModifier` on buff changes. */
+  readonly maxHp: number
   mp: number
   maxMp: number
-  attack: number
+  /** Derived attack = baseAttack × (1 + attackModifier). Maintained as a getter; BuffSystem syncs `attackModifier` on buff changes. */
+  readonly attack: number
+  /** Base attack stat. Set at init; runtime never modified. */
+  baseAttack: number
+  /** Base max HP. Set at init; runtime never modified. */
+  baseMaxHp: number
+  /** Sum of all `attack_modifier` buff effects on this entity. Mutable; synced by BuffSystem. */
+  attackModifier: number
+  /** Sum of all `max_hp_modifier` buff effects on this entity. Mutable; synced by BuffSystem. */
+  maxHpModifier: number
 
   autoAttackRange: number   // max range for auto-attack
   aggroRange: number        // proximity aggro detection range (boss/mob)
@@ -99,9 +109,10 @@ export interface CreateEntityOptions {
 }
 
 export function createEntity(opts: CreateEntityOptions): Entity {
-  const maxHp = opts.maxHp ?? opts.hp ?? 0
+  const baseMaxHp = opts.maxHp ?? opts.hp ?? 0
   const maxMp = opts.maxMp ?? opts.mp ?? 0
-  return {
+  const baseAttack = opts.attack ?? 0
+  const entity: Entity = {
     id: opts.id,
     type: opts.type,
     group: opts.group ?? opts.type,
@@ -111,11 +122,15 @@ export function createEntity(opts: CreateEntityOptions): Entity {
     facing: opts.facing ?? 0,
     speed: opts.speed ?? 5,
     size: opts.size ?? 0.5,
-    hp: opts.hp ?? maxHp,
-    maxHp,
+    hp: opts.hp ?? baseMaxHp,
+    maxHp: 0, // placeholder, overwritten below
     mp: opts.mp ?? maxMp,
     maxMp,
-    attack: opts.attack ?? 0,
+    attack: 0, // placeholder, overwritten below
+    baseAttack,
+    baseMaxHp,
+    attackModifier: 0,
+    maxHpModifier: 0,
     autoAttackRange: opts.autoAttackRange ?? 0,
     aggroRange: opts.aggroRange ?? 0,
     alive: true,
@@ -129,4 +144,17 @@ export function createEntity(opts: CreateEntityOptions): Entity {
     skillIds: opts.skillIds ?? [],
     customData: {},
   }
+
+  Object.defineProperty(entity, 'attack', {
+    get(this: Entity) { return Math.round(this.baseAttack * (1 + this.attackModifier)) },
+    enumerable: true,
+    configurable: true,
+  })
+  Object.defineProperty(entity, 'maxHp', {
+    get(this: Entity) { return Math.round(this.baseMaxHp * (1 + this.maxHpModifier)) },
+    enumerable: true,
+    configurable: true,
+  })
+
+  return entity
 }

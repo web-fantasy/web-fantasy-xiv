@@ -1,0 +1,21 @@
+id: pilgrim-trade
+title: 朝圣者交易
+description: 一位虔诚的朝圣者愿意与你交易决心与水晶。
+options:
+  - id: give-determination
+    label: 献出 1 决心 → 8 水晶
+    requires:
+      determination: { $gte: 2 }
+    outcomes:
+      - { kind: determination, delta: -1 }
+      - { kind: crystals, delta: 8 }
+  - id: give-crystals
+    label: 献出 5 水晶 → 1 决心
+    requires:
+      crystals: { $gte: 5 }
+    outcomes:
+      - { kind: crystals, delta: -5 }
+      - { kind: determination, delta: 1 }
+  - id: leave
+    label: 礼貌离开
+    outcomes: []

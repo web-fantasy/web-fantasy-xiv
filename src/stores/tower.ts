@@ -9,12 +9,21 @@
 // related calls are deferred to Phase 2+.
 import { defineStore } from 'pinia'
 import { ref, computed, watch, toRaw, nextTick, type Ref } from 'vue'
-import type { TowerRun, TowerRunPhase, BaseJobId } from '@/tower/types'
+import type {
+  TowerRun,
+  TowerRunPhase,
+  BaseJobId,
+  DeterminationChangeIntent,
+  DeterminationChangeResult,
+  DeterminationInterceptor,
+  EventOutcome,
+} from '@/tower/types'
 import { TOWER_RUN_SCHEMA_VERSION } from '@/tower/types'
 import { TOWER_BLUEPRINT_CURRENT, TOWER_BLUEPRINT_MIN_SUPPORTED } from '@/tower/blueprint/version'
 import { saveTowerRun, loadTowerRun, clearTowerRun } from '@/tower/persistence'
 import { generateTowerGraph } from '@/tower/graph/generator'
 import { pickEncounterIdFromActivePool, resolveEncounter } from '@/tower/pools/encounter-pool'
+import { pickEventIdFromActivePool } from '@/tower/pools/event-pool'
 
 /**
  * Generate a run id. Uses crypto.randomUUID when available; falls back to
@@ -79,6 +88,16 @@ export const useTowerStore = defineStore('tower', () => {
    * constant. Consumed by UI (Task 16) to show a dismissable banner. Not persisted.
    */
   const schemaResetNotice = ref(false)
+
+  /**
+   * Determination change interceptor chain (spec §3.7).
+   * Runtime-only — NOT persisted (function values cannot be structured-cloned,
+   * and the contract is that interceptors are installed by consumers at boot).
+   * Lives outside `run` specifically so the persistence layer (which serializes
+   * only `run.value`) never sees it. Phase 5 keeps this array permanently empty;
+   * phase 6+ 策略卡 / buff features will push into it.
+   */
+  const interceptors = ref<DeterminationInterceptor[]>([])
 
   /**
    * Flag to suppress persistence writes triggered by continueLastRun loading
@@ -188,6 +207,16 @@ export const useTowerStore = defineStore('tower', () => {
         }
       }
     }
+    // Phase 5: crystallize eventId for each event node from Active Pool.
+    for (const node of Object.values(graph.nodes)) {
+      if (node.kind === 'event') {
+        try {
+          node.eventId = await pickEventIdFromActivePool(run.value.seed, node.id)
+        } catch (err) {
+          console.warn(`[tower] no active event pool (nodeId=${node.id}):`, err)
+        }
+      }
+    }
     run.value.towerGraph = graph
     run.value.currentNodeId = graph.startNodeId
     phase.value = 'in-path'
@@ -254,13 +283,13 @@ export const useTowerStore = defineStore('tower', () => {
     }
     const node = run.value.towerGraph.nodes[nodeId]
     if (!node) return
-    // Phase 4: only mob kind enters combat; elite/boss are phase 5 stubs
-    if (node.kind !== 'mob') {
-      console.warn(`[tower] enterCombat on kind='${node.kind}' is not supported in phase 4`)
+    // Phase 5: mob / elite / boss all enter combat via the same pool-resolved path
+    if (node.kind !== 'mob' && node.kind !== 'elite' && node.kind !== 'boss') {
+      console.warn(`[tower] enterCombat on non-battle kind='${node.kind}'`)
       return
     }
     if (!node.encounterId) {
-      console.error(`[tower] enterCombat: mob node ${nodeId} has no encounterId (startDescent bug?)`)
+      console.error(`[tower] enterCombat: ${node.kind} node ${nodeId} has no encounterId (startDescent bug?)`)
       return
     }
     // Do NOT advance currentNodeId here — the token stays on the previous node
@@ -282,9 +311,86 @@ export const useTowerStore = defineStore('tower', () => {
     void saveTowerRun(toRaw(run.value))
   }
 
-  function deductDeterminationOnWipe(amount: number): void {
-    if (!run.value) return
-    run.value.determination = Math.max(0, run.value.determination - amount)
+  /**
+   * Single entry point for all determination changes (spec §3.7).
+   * Runs the interceptor chain; each interceptor may modify the delta or
+   * cancel the change entirely. When not cancelled, applies the final delta
+   * clamped to [0, maxDetermination]. Returns the final result for callers
+   * that need to observe cancellation (e.g., battle-runner death window).
+   *
+   * No-op when called outside an active run (run.value == null); logs a warning.
+   *
+   * Phase 5: interceptor array stays empty — the contract is established now
+   * so phase 6/7 consumers can install hooks without patching scattered code.
+   */
+  function changeDetermination(
+    intent: DeterminationChangeIntent,
+  ): DeterminationChangeResult {
+    let result: DeterminationChangeResult = {
+      delta: intent.delta,
+      cancelled: false,
+    }
+    for (const f of interceptors.value) {
+      result = f(intent, result)
+      if (result.cancelled) break
+    }
+    if (!result.cancelled) {
+      if (!run.value) {
+        console.warn('[tower] changeDetermination called with no active run — ignoring')
+        return result
+      }
+      const next = run.value.determination + result.delta
+      run.value.determination = Math.max(
+        0,
+        Math.min(run.value.maxDetermination, next),
+      )
+    }
+    return result
+  }
+
+  /**
+   * Phase 5 wipe dispatcher (spec §4.1). Routes determination deduction
+   * through `changeDetermination` so interceptors (策略卡 / buff sources)
+   * observe every wipe. Delta: mob/elite = -1, boss = -2.
+   */
+  function onCombatWipe(
+    kind: 'mob' | 'elite' | 'boss',
+    encounterId: string,
+  ): DeterminationChangeResult {
+    const source: DeterminationChangeIntent['source'] =
+      kind === 'boss' ? 'boss-wipe' : kind === 'elite' ? 'elite-wipe' : 'mob-wipe'
+    const delta = kind === 'boss' ? -2 : -1
+    const result = changeDetermination({ source, delta, encounterId })
+    if (run.value) {
+      void saveTowerRun(toRaw(run.value))
+    }
+    return result
+  }
+
+  /**
+   * Apply a single EventOutcome from an event option (spec §5.5).
+   * - `crystals`: direct add with lower clamp at 0 (no interceptor).
+   * - `determination`: routed through `changeDetermination` with source='event'
+   *   so interceptors (echo / 策略卡 / future hooks) observe all event-sourced
+   *   deltas and [0, maxDetermination] clamp is respected.
+   *
+   * No-op when called outside an active run (run.value == null); logs a warning.
+   * Consumer (EventOptionPanel, Task 18) iterates option.outcomes and calls once
+   * per outcome — this function persists after each mutation.
+   */
+  function applyEventOutcome(out: EventOutcome): void {
+    if (!run.value) {
+      console.warn('[tower] applyEventOutcome called with no active run — ignoring')
+      return
+    }
+    switch (out.kind) {
+      case 'crystals':
+        run.value.crystals = Math.max(0, run.value.crystals + out.delta)
+        break
+      case 'determination':
+        changeDetermination({ source: 'event', delta: out.delta })
+        break
+    }
     void saveTowerRun(toRaw(run.value))
   }
 
@@ -296,6 +402,23 @@ export const useTowerStore = defineStore('tower', () => {
     run.value.crystals += Math.floor(crystalsRewardFull / 2)
     run.value.pendingCombatNodeId = null
     phase.value = 'in-path'
+    void saveTowerRun(toRaw(run.value))
+  }
+
+  /**
+   * Called when player abandons a boss fight; ends the run immediately (no salvage).
+   * Phase 5 boss-wipe semantics per spec §4.1.
+   *
+   * Clears pendingCombatNodeId, sets phase to 'ended', and persists.
+   * No-op + warn if no active run.
+   */
+  function abandonBossRun(): void {
+    if (!run.value) {
+      console.warn('[tower] abandonBossRun: no active run')
+      return
+    }
+    run.value.pendingCombatNodeId = null
+    phase.value = 'ended'
     void saveTowerRun(toRaw(run.value))
   }
 
@@ -369,8 +492,12 @@ export const useTowerStore = defineStore('tower', () => {
     scoutNode,
     enterCombat,
     resolveVictory,
-    deductDeterminationOnWipe,
+    onCombatWipe,
+    interceptors,
+    changeDetermination,
+    applyEventOutcome,
     abandonCurrentCombat,
+    abandonBossRun,
     checkEndedCondition,
     enterJobPicker,
     schemaResetNotice,

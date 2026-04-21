@@ -243,6 +243,14 @@ export class SkillResolver {
   }
 
   update(entity: Entity, dt: number): void {
+    // Dead entities can't cast or tick GCD — interrupt any in-progress cast as
+    // a safety net (primary interrupt path is the death handler in battle-runner,
+    // but this protects against dead-but-still-casting states from other paths).
+    if (!entity.alive) {
+      if (entity.casting) this.interruptCast(entity)
+      return
+    }
+
     // Tick GCD
     if (entity.gcdTimer > 0) {
       entity.gcdTimer = Math.max(0, entity.gcdTimer - dt)

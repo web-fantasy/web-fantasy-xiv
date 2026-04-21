@@ -3,9 +3,10 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTimeAgo } from '@vueuse/core'
 import { useTowerStore } from '@/stores/tower'
-import type { BaseJobId, TowerNode } from '@/tower/types'
+import type { BaseJobId, EventDef, TowerNode } from '@/tower/types'
 import { getJob, type PlayerJob } from '@/jobs'
 import { resolveEncounter } from '@/tower/pools/encounter-pool'
+import { loadEventById } from '@/tower/events/event-loader'
 
 const router = useRouter()
 const tower = useTowerStore()
@@ -21,6 +22,13 @@ const selectedNode = computed<TowerNode | null>(() => {
   return tower.run.towerGraph.nodes[selectedNodeId.value] ?? null
 })
 
+// ───────── event-node modal state ─────────
+// When player enters an event node we load the yaml, mount <TowerEventOptionPanel>,
+// and wait for @resolved before advancing. Outcomes are applied by the panel
+// via `tower.applyEventOutcome` — we only handle node advancement here.
+const activeEvent = ref<EventDef | null>(null)
+const activeEventNodeId = ref<number | null>(null)
+
 // ───────── in-combat state ─────────
 // The mob node being fought is tracked by the store via run.pendingCombatNodeId
 // (GDD §2.4 route-lock: persistent so browser refresh cannot bypass the commit).
@@ -30,6 +38,11 @@ const currentRewardCrystals = ref(0)
 const combatInstanceKey = ref(0)
 const showResultOverlay = ref(false)
 const lastCombatResult = ref<'victory' | 'wipe'>('victory')
+// Resolved from pendingCombatNodeId on combat:ended so the overlay can render
+// the correct button matrix (spec §4.1). Default 'mob' is only a placeholder
+// — we always set it from the locked pending combat node before the overlay
+// is shown.
+const lastCombatKind = ref<'mob' | 'elite' | 'boss'>('mob')
 
 const runJobId = computed<string>(() => {
   return tower.run?.advancedJobId ?? tower.run?.baseJobId ?? 'default'
@@ -99,6 +112,8 @@ function onMapNodeClick(nodeId: number): void {
   if (!current) return
   // Only allow selecting nodes reachable from current (in current.next)
   if (!current.next.includes(nodeId)) return
+  // GDD §2.4: ALL node clicks go through the confirm panel — the multi-branch
+  // "三思而后行" decision moment. No kind-specific shortcut.
   selectedNodeId.value = nodeId
 }
 
@@ -117,17 +132,55 @@ function onEnter() {
   const nodeId = selectedNodeId.value
   const node = tower.run.towerGraph.nodes[nodeId]
   if (!node) return
-  if (node.kind === 'reward' || node.kind === 'campfire' || node.kind === 'event' || node.kind === 'start') {
+  if (node.kind === 'event') {
+    // Move the token onto the event node first so a refresh mid-resolution
+    // resumes on the correct node. Then load + show the modal; advancement
+    // off the event node happens after @resolved.
+    tower.advanceTo(nodeId)
+    selectedNodeId.value = null
+    void onEventNodeEnter(nodeId)
+    return
+  }
+  if (node.kind === 'reward' || node.kind === 'campfire' || node.kind === 'start') {
     tower.advanceTo(nodeId)
     selectedNodeId.value = null
     return
   }
-  if (node.kind === 'mob') {
+  if (node.kind === 'mob' || node.kind === 'elite' || node.kind === 'boss') {
     tower.enterCombat(nodeId)
     selectedNodeId.value = null
     return
   }
-  // elite / boss: panel disables the button; nothing to do here.
+}
+
+// ───────────── event-node flow ─────────────
+async function onEventNodeEnter(nodeId: number): Promise<void> {
+  if (!tower.run) return
+  const node = tower.run.towerGraph.nodes[nodeId]
+  if (!node || node.kind !== 'event' || !node.eventId) {
+    console.warn('[tower] onEventNodeEnter: invalid node or missing eventId', nodeId)
+    return
+  }
+  try {
+    const def = await loadEventById(node.eventId)
+    activeEvent.value = def
+    activeEventNodeId.value = nodeId
+  } catch (err) {
+    console.error('[tower] failed to load event', node.eventId, err)
+  }
+}
+
+function onEventResolved(_optionId: string) {
+  // Outcomes already applied by <TowerEventOptionPanel> via tower.applyEventOutcome.
+  // The event node is already `currentNodeId` (moved there by onEnter); it will
+  // be pushed into `completedNodes` when the player advances off it (advanceTo
+  // marks the PREVIOUS current node completed). Same pattern as phase-4 reward /
+  // campfire / start stubs — consistent behavior across all non-battle nodes.
+  // We only dismiss the modal here and re-check ended condition (determination
+  // could have gone to 0 through a penalizing event option).
+  activeEvent.value = null
+  activeEventNodeId.value = null
+  tower.checkEndedCondition()
 }
 
 // ───────────── in-combat flow ─────────────
@@ -171,8 +224,21 @@ watch(
 
 function onCombatEnded(payload: { result: 'victory' | 'wipe'; elapsed: number }) {
   lastCombatResult.value = payload.result
+  // Resolve encounter kind from the locked pending combat node — overlay needs
+  // it for the phase 5 button matrix (spec §4.1) regardless of result.
+  const nodeId = tower.run?.pendingCombatNodeId
+  const node = nodeId != null ? tower.run?.towerGraph.nodes[nodeId] : null
+  if (node && (node.kind === 'mob' || node.kind === 'elite' || node.kind === 'boss')) {
+    lastCombatKind.value = node.kind
+  } else {
+    console.warn('[tower/index] onCombatEnded: missing pending combat node meta', { nodeId })
+  }
   if (payload.result === 'wipe') {
-    tower.deductDeterminationOnWipe(1)
+    // onCombatWipe routes the correct delta (mob/elite = -1, boss = -2)
+    // through the determination interceptor chain (spec §4.1).
+    if (node && (node.kind === 'mob' || node.kind === 'elite' || node.kind === 'boss') && node.encounterId) {
+      tower.onCombatWipe(node.kind, node.encounterId)
+    }
   }
   showResultOverlay.value = true
 }
@@ -184,16 +250,47 @@ function onRetryCombat() {
   combatInstanceKey.value++ // remount runner → fresh battle
 }
 
+// ESC pause menu (mounted via EncounterRunner overlay slot). PauseMenu handles
+// its own ESC toggle + scene.resume; we just react to the emitted intents.
+function onPauseResume() {
+  // no-op; PauseMenu calls scene.resume() itself
+}
+
+function onPauseRetry() {
+  // Remount the runner for a fresh battle. Does NOT deduct determination
+  // (that would be double-penalty — the player hasn't wiped). Mirrors the
+  // practice-mode pause→retry semantic. Only allowed before battleOver.
+  combatInstanceKey.value++
+}
+
 function onAbandonCombat() {
-  if (!tower.run) return
-  const nodeId = tower.run.pendingCombatNodeId
-  if (nodeId === null || nodeId === undefined) return
-  // abandonCurrentCombat flips phase in-combat → in-path and clears pendingCombatNodeId.
+  const nodeId = tower.run?.pendingCombatNodeId
+  if (nodeId == null) {
+    console.warn('[tower] onAbandonCombat: no pending combat node')
+    showResultOverlay.value = false
+    return
+  }
+  const node = tower.run!.towerGraph.nodes[nodeId]
+  // Spec §4.1: boss abandon ends the run immediately (no 50% salvage).
+  // Resolve kind from the locked pendingCombatNodeId — never from stale lastCombatKind cache.
+  if (node?.kind === 'boss') {
+    tower.abandonBossRun() // clears pendingCombatNodeId + sets phase ended + persists
+    showResultOverlay.value = false
+    return
+  }
+  // mob/elite: 50% salvage crystals, mark completed, return to in-path.
   // Read nodeId BEFORE the store clears it.
   tower.abandonCurrentCombat(nodeId, currentRewardCrystals.value)
   tower.advanceTo(nodeId)
   showResultOverlay.value = false
   tower.checkEndedCondition()
+}
+
+function onSettleCombat() {
+  // Determination exhausted — force end-of-run (spec §4.1 degenerate case).
+  if (!tower.run) return
+  tower.setPhase('ended')
+  showResultOverlay.value = false
 }
 
 function onContinueAfterVictory() {
@@ -224,13 +321,17 @@ template(v-if="tower.phase === 'in-combat' && tower.run && currentEncounterUrl")
     :key="combatInstanceKey"
     @combat-ended="onCombatEnded"
   )
+    template(#overlay)
+      HudPauseMenu(@resume="onPauseResume" @retry="onPauseRetry")
   TowerBattleResultOverlay(
     v-if="showResultOverlay"
     :result="lastCombatResult"
+    :encounter-kind="lastCombatKind"
     :encounter-reward-crystals="currentRewardCrystals"
-    :current-determination="tower.run.determination"
+    :determination="tower.run.determination"
     @retry="onRetryCombat"
     @abandon="onAbandonCombat"
+    @settle="onSettleCombat"
     @continue="onContinueAfterVictory"
   )
 
@@ -332,8 +433,19 @@ template(v-else)
       .tower-placeholder
         | Phase: {{ tower.phase }}
       .tower-placeholder
-        | TODO: implemented in later phases
+        | 未知状态，请重置后再试
       button.tower-btn.tertiary(type="button" @click="tower.resetRun()") 重置并返回
+
+    //- Event modal — OUTSIDE the v-if phase chain so it can overlay any phase
+    //- (in-path on event node). Lifecycle driven by `activeEvent` (set by
+    //- onEventNodeEnter, cleared by onEventResolved). Placing it inside the
+    //- v-if/v-else-if chain would break the chain and cause the fallback panel
+    //- to always render alongside other phases.
+    TowerEventOptionPanel(
+      v-if="activeEvent"
+      :event="activeEvent"
+      @resolved="onEventResolved"
+    )
 </template>
 
 <style lang="scss" scoped>

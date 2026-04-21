@@ -1,0 +1,11 @@
+id: healing-oasis
+title: 治愈绿洲
+description: 你发现一汪清澈的泉水。喝下去，似乎能让你重燃决心。
+options:
+  - id: drink
+    label: 饮用泉水（+1 决心）
+    outcomes:
+      - { kind: determination, delta: 1 }
+  - id: leave
+    label: 礼貌离开
+    outcomes: []

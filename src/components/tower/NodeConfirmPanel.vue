@@ -1,7 +1,13 @@
 <script setup lang="ts">
-import { computed, onMounted, onBeforeUnmount } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useTowerStore } from '@/stores/tower'
 import type { TowerNode } from '@/tower/types'
+import { resolveEncounter } from '@/tower/pools/encounter-pool'
+import {
+  resolveCondition,
+  type BattlefieldConditionPoolEntry,
+} from '@/tower/pools/battlefield-condition-pool'
+import { loadEncounter } from '@/game/encounter-loader'
 
 interface Props {
   node: TowerNode
@@ -40,18 +46,56 @@ const hasScoutInfo = computed(() => !!scoutInfo.value)
 const canScout = computed(() => isBattleNode.value && !hasScoutInfo.value)
 
 const canEnter = computed(() => {
-  if (props.node.kind === 'mob') return true
-  if (props.node.kind === 'elite' || props.node.kind === 'boss') return false
+  if (isBattleNode.value) return true
+  if (
+    props.node.kind === 'reward' ||
+    props.node.kind === 'campfire' ||
+    props.node.kind === 'event'
+  ) {
+    return true
+  }
   return true
 })
 
 const enterLabel = computed(() => {
-  if (props.node.kind === 'mob') return '进入战斗'
-  if (props.node.kind === 'elite' || props.node.kind === 'boss') return '进入（phase 5 实装）'
+  if (isBattleNode.value) return '进入战斗'
+  if (props.node.kind === 'event') return '进入事件'
   return '通过'
 })
 
 const crystalsInsufficient = computed(() => (tower.run?.crystals ?? 0) < 1)
+
+// --- Battlefield conditions preview (boss nodes only; phase 5) ---
+const conditions = ref<BattlefieldConditionPoolEntry[]>([])
+
+async function loadConditions() {
+  conditions.value = []
+  if (props.node.kind !== 'boss') return
+  const encounterId = props.node.encounterId
+  if (!encounterId) return
+  try {
+    const meta = await resolveEncounter(encounterId)
+    const encounterData = await loadEncounter(meta.yamlPath)
+    const ids = encounterData.conditions ?? []
+    const resolved: BattlefieldConditionPoolEntry[] = []
+    for (const id of ids) {
+      resolved.push(await resolveCondition(id))
+    }
+    conditions.value = resolved
+  } catch (err) {
+    console.error('[NodeConfirmPanel] loadConditions failed:', err)
+    conditions.value = []
+  }
+}
+
+function isActivelyTriggered(cond: BattlefieldConditionPoolEntry): boolean {
+  if (cond.kind === 'echo') {
+    const det = tower.run?.determination
+    if (det == null) return false
+    return det <= cond.params.determinationThreshold
+  }
+  return false
+}
 
 function onScout() { emit('scout') }
 function onEnter() { if (canEnter.value) emit('enter') }
@@ -63,10 +107,18 @@ function handleKey(e: KeyboardEvent) {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKey)
+  void loadConditions()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('keydown', handleKey)
 })
+
+watch(
+  () => [props.node.id, props.node.kind, props.node.encounterId],
+  () => {
+    void loadConditions()
+  },
+)
 </script>
 
 <template lang="pug">
@@ -83,8 +135,16 @@ onBeforeUnmount(() => {
             li(v-for="(c, i) in scoutInfo.conditions" :key="i") {{ c.kind }}
       .unscouted(v-else-if="isBattleNode")
         | 情报未知，进入前可侦察。
-      .non-battle-hint(v-else-if="node.kind === 'reward' || node.kind === 'campfire' || node.kind === 'event'")
-        | 该节点将在后续 phase 实装；phase 4 通过即标记已完成。
+      .non-battle-hint(v-else-if="node.kind === 'event'")
+        | 进入后将触发一个随机事件。
+      .non-battle-hint(v-else-if="node.kind === 'reward' || node.kind === 'campfire'")
+        | 该节点的奖励 / 篝火交互尚未开放，通过即标记已完成。
+      section.confirm-panel__conditions(v-if="node.kind === 'boss' && conditions.length > 0")
+        .label 本场战斗激活的场地机制
+        ul
+          li(v-for="c in conditions" :key="c.id")
+            span.cond-summary {{ c.scoutSummary }}
+            span.cond-trigger(v-if="isActivelyTriggered(c)")  （当前将立即触发）
     .panel-actions
       button.btn.scout(
         v-if="canScout"
@@ -152,6 +212,29 @@ onBeforeUnmount(() => {
   .unscouted, .non-battle-hint {
     color: #aaa;
     font-style: italic;
+  }
+}
+
+.confirm-panel__conditions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed rgba(255, 255, 255, 0.12);
+
+  ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+
+  li {
+    font-size: 12px;
+    color: #ccc;
+    padding: 4px 0;
+  }
+
+  .cond-trigger {
+    color: #ffb347;
+    font-weight: bold;
   }
 }
 

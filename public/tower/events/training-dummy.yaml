@@ -1,0 +1,14 @@
+id: training-dummy
+title: 训练假人
+description: 一具老旧的训练假人。专心练剑能让你重燃决心，但需要消耗补给。
+options:
+  - id: train
+    label: 练剑（-8 水晶 → +1 决心）
+    requires:
+      crystals: { $gte: 8 }
+    outcomes:
+      - { kind: crystals, delta: -8 }
+      - { kind: determination, delta: 1 }
+  - id: leave
+    label: 离开
+    outcomes: []

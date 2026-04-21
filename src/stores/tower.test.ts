@@ -740,6 +740,8 @@ describe('tower store — enterCombat', () => {
         manifestVersion: 1,
         entries: [
           { id: 'mob-a', yamlPath: 'encounters/tower/mob-a.yaml', kind: 'mob', scoutSummary: 'A', rewards: { crystals: 10 } },
+          { id: 'elite-a', yamlPath: 'encounters/tower/elite-a.yaml', kind: 'elite', scoutSummary: 'E', rewards: { crystals: 35 } },
+          { id: 'boss-a', yamlPath: 'encounters/tower/boss-a.yaml', kind: 'boss', scoutSummary: 'B', rewards: { crystals: 80 } },
           { id: 'mob-fallback', yamlPath: 'encounters/tower/mob-fallback.yaml', kind: 'mob', scoutSummary: 'fb', rewards: { crystals: 10 }, deprecated: 'never-in-pool' },
         ],
       }),
@@ -768,15 +770,26 @@ describe('tower store — enterCombat', () => {
     expect(tower.phase).not.toBe('in-combat')
   })
 
-  it('enterCombat on elite/boss in phase 4 is no-op (phase 5 feature)', async () => {
+  it('enterCombat on elite enters combat (phase 5)', async () => {
     const tower = useTowerStore()
     tower.startNewRun('swordsman', 'ec-3')
+    await tower.startDescent()
+    const elite = Object.values(tower.run!.towerGraph.nodes).find((n) => n.kind === 'elite')
+    if (!elite) return
+    tower.run!.currentNodeId = elite.id
+    tower.enterCombat(elite.id)
+    expect(tower.phase).toBe('in-combat')
+  })
+
+  it('enterCombat on boss enters combat (phase 5)', async () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'ec-4')
     await tower.startDescent()
     const boss = Object.values(tower.run!.towerGraph.nodes).find((n) => n.kind === 'boss')
     if (!boss) return
     tower.run!.currentNodeId = boss.id
     tower.enterCombat(boss.id)
-    expect(tower.phase).not.toBe('in-combat')
+    expect(tower.phase).toBe('in-combat')
   })
 
   it('enterCombat does NOT change currentNodeId (player stays on previous node)', async () => {
@@ -825,19 +838,20 @@ describe('tower store — combat outcome actions', () => {
     expect(tower.phase).toBe('in-path')
   })
 
-  it('deductDeterminationOnWipe subtracts from run.determination', () => {
+  it('onCombatWipe(mob) subtracts -1 from run.determination', () => {
     const tower = useTowerStore()
     tower.startNewRun('swordsman', 'dd-1')
     expect(tower.run!.determination).toBe(5)
-    tower.deductDeterminationOnWipe(1)
+    tower.onCombatWipe('mob', 'mob-a')
     expect(tower.run!.determination).toBe(4)
   })
 
-  it('deductDeterminationOnWipe does not go below 0', () => {
+  it('onCombatWipe clamps to 0 (does not go below 0)', () => {
     const tower = useTowerStore()
     tower.startNewRun('swordsman', 'dd-2')
     tower.run!.determination = 1
-    tower.deductDeterminationOnWipe(5)
+    // boss wipe is -2; from 1 it should clamp to 0 rather than -1
+    tower.onCombatWipe('boss', 'boss-x')
     expect(tower.run!.determination).toBe(0)
   })
 })
@@ -889,6 +903,340 @@ describe('tower store — abandon + checkEnded', () => {
     tower.run!.determination = 1
     tower.checkEndedCondition()
     expect(tower.phase).not.toBe('ended')
+  })
+})
+
+describe('tower store — changeDetermination interceptor', () => {
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    await clearTowerRun()
+    vi.restoreAllMocks()
+  })
+
+  it('empty interceptors: pass-through apply', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'cd-1')
+    // startNewRun seeds determination: 5, maxDetermination: 5
+    const r = tower.changeDetermination({ source: 'mob-wipe', delta: -1 })
+    expect(r).toEqual({ delta: -1, cancelled: false })
+    expect(tower.run!.determination).toBe(4)
+  })
+
+  it('clamps to [0, maxDetermination]', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'cd-clamp-upper')
+    // determination: 5, max: 5 — attempt to add more than max
+    tower.changeDetermination({ source: 'event', delta: +3 })
+    expect(tower.run!.determination).toBe(5) // upper clamp
+
+    // Set determination: 1, max: 5 — attempt to subtract more than floor
+    tower.run!.determination = 1
+    tower.changeDetermination({ source: 'boss-wipe', delta: -5 })
+    expect(tower.run!.determination).toBe(0) // lower clamp
+  })
+
+  it('single interceptor modifies delta', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'cd-single')
+    tower.interceptors.push((_intent, current) => ({
+      ...current,
+      delta: current.delta * 2,
+    }))
+    tower.changeDetermination({ source: 'mob-wipe', delta: -1 })
+    expect(tower.run!.determination).toBe(3) // 5 + (-1 * 2) = 3
+  })
+
+  it('interceptor cancels → determination unchanged', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'cd-cancel')
+    tower.interceptors.push(() => ({
+      delta: 0,
+      cancelled: true,
+      cancelReason: '无敌光环',
+    }))
+    const r = tower.changeDetermination({ source: 'mob-wipe', delta: -1 })
+    expect(r.cancelled).toBe(true)
+    expect(r.cancelReason).toBe('无敌光环')
+    expect(tower.run!.determination).toBe(5)
+  })
+
+  it('multi interceptor chain order + cancel terminates chain', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'cd-chain')
+    const log: string[] = []
+    tower.interceptors.push((_intent, cur) => {
+      log.push('a')
+      return cur
+    })
+    tower.interceptors.push((_intent, _cur) => {
+      log.push('b')
+      return { delta: 0, cancelled: true, cancelReason: 'stop' }
+    })
+    tower.interceptors.push((_intent, cur) => {
+      log.push('c')
+      return cur
+    })
+    tower.changeDetermination({ source: 'mob-wipe', delta: -1 })
+    expect(log).toEqual(['a', 'b']) // c never called
+  })
+
+  it('no-op (does not throw) when called with no active run', () => {
+    const tower = useTowerStore()
+    // Do NOT call startNewRun — run.value stays null
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(() => tower.changeDetermination({ source: 'mob-wipe', delta: -1 })).not.toThrow()
+    expect(tower.run).toBeNull()
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no active run'))
+    warnSpy.mockRestore()
+  })
+})
+
+describe('tower store — onCombatWipe', () => {
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    await clearTowerRun()
+    vi.restoreAllMocks()
+  })
+
+  it('mob wipe deducts -1 via changeDetermination', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t10-mob')
+    expect(tower.run!.determination).toBe(5)
+    const r = tower.onCombatWipe('mob', 'mob-frost-sprite')
+    expect(r).toEqual({ delta: -1, cancelled: false })
+    expect(tower.run!.determination).toBe(4)
+  })
+
+  it('elite wipe deducts -1', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t10-elite')
+    tower.onCombatWipe('elite', 'elite-fortune-trial')
+    expect(tower.run!.determination).toBe(4)
+  })
+
+  it('boss wipe deducts -2', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t10-boss')
+    tower.onCombatWipe('boss', 'boss-tower-warden')
+    expect(tower.run!.determination).toBe(3)
+  })
+
+  it('respects interceptor cancel', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t10-cancel')
+    tower.interceptors.push(() => ({ delta: 0, cancelled: true, cancelReason: 'divine' }))
+    const r = tower.onCombatWipe('boss', 'boss-x')
+    expect(r.cancelled).toBe(true)
+    expect(r.cancelReason).toBe('divine')
+    expect(tower.run!.determination).toBe(5) // unchanged
+  })
+
+  it('routes source tag by kind (mob→mob-wipe, elite→elite-wipe, boss→boss-wipe)', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t10-source')
+    const seen: string[] = []
+    tower.interceptors.push((intent, current) => {
+      seen.push(intent.source)
+      return current
+    })
+    tower.onCombatWipe('mob', 'e-1')
+    tower.onCombatWipe('elite', 'e-2')
+    tower.onCombatWipe('boss', 'e-3')
+    expect(seen).toEqual(['mob-wipe', 'elite-wipe', 'boss-wipe'])
+  })
+})
+
+describe('tower store — applyEventOutcome', () => {
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    await clearTowerRun()
+    vi.restoreAllMocks()
+  })
+
+  it('crystals outcome adds delta', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t11-crystals-add')
+    const initial = tower.run!.crystals
+    tower.applyEventOutcome({ kind: 'crystals', delta: 5 })
+    expect(tower.run!.crystals).toBe(initial + 5)
+  })
+
+  it('crystals outcome negative delta clamps to 0', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t11-crystals-clamp')
+    tower.run!.crystals = 3
+    tower.applyEventOutcome({ kind: 'crystals', delta: -10 })
+    expect(tower.run!.crystals).toBe(0)
+  })
+
+  it('determination outcome routes through changeDetermination with source=event', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t11-det')
+    tower.run!.determination = 2
+    const sources: string[] = []
+    tower.interceptors.push((intent, cur) => {
+      sources.push(intent.source)
+      return cur
+    })
+    tower.applyEventOutcome({ kind: 'determination', delta: 1 })
+    expect(sources).toEqual(['event'])
+    expect(tower.run!.determination).toBe(3)
+  })
+
+  it('determination outcome respects interceptor cancel', () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t11-det-cancel')
+    tower.run!.determination = 3
+    tower.interceptors.push(() => ({ delta: 0, cancelled: true, cancelReason: 'blocked' }))
+    tower.applyEventOutcome({ kind: 'determination', delta: -1 })
+    expect(tower.run!.determination).toBe(3) // unchanged
+  })
+
+  it('no-op gracefully when run is null', () => {
+    const tower = useTowerStore()
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    expect(() => tower.applyEventOutcome({ kind: 'crystals', delta: 5 })).not.toThrow()
+    expect(tower.run).toBeNull()
+    warnSpy.mockRestore()
+  })
+})
+
+describe('tower store — startDescent event node crystallization', () => {
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    await clearTowerRun()
+    vi.restoreAllMocks()
+    const { _resetEncounterPoolCache } = await import('@/tower/pools/encounter-pool')
+    const { _resetEventPoolCache } = await import('@/tower/pools/event-pool')
+    _resetEncounterPoolCache()
+    _resetEventPoolCache()
+    // URL-aware mock: serve encounter-pool.json and event-pool.json separately.
+    globalThis.fetch = vi.fn((url: string) => {
+      const href = typeof url === 'string' ? url : String(url)
+      if (href.includes('event-pool.json')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            manifestVersion: 1,
+            entries: [
+              { id: 'healing-oasis', yamlPath: 'tower/events/healing-oasis.yaml' },
+              { id: 'pilgrim-trade', yamlPath: 'tower/events/pilgrim-trade.yaml' },
+              { id: 'battle-trap', yamlPath: 'tower/events/battle-trap.yaml' },
+              { id: 'training-dummy', yamlPath: 'tower/events/training-dummy.yaml' },
+              { id: 'mystic-stele', yamlPath: 'tower/events/mystic-stele.yaml' },
+              { id: 'event-fallback', yamlPath: 'tower/events/event-fallback.yaml', deprecated: 'never-in-pool' },
+            ],
+          }),
+        }) as any
+      }
+      // default: encounter-pool.json
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          manifestVersion: 1,
+          entries: [
+            { id: 'mob-a', yamlPath: 'encounters/tower/mob-a.yaml', kind: 'mob', scoutSummary: 'A', rewards: { crystals: 10 } },
+            { id: 'mob-b', yamlPath: 'encounters/tower/mob-b.yaml', kind: 'mob', scoutSummary: 'B', rewards: { crystals: 10 } },
+            { id: 'mob-fallback', yamlPath: 'encounters/tower/mob-fallback.yaml', kind: 'mob', scoutSummary: 'fb', rewards: { crystals: 10 }, deprecated: 'never-in-pool' },
+          ],
+        }),
+      }) as any
+    }) as any
+  })
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('fills eventId on each event-kind node after startDescent', async () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t12')
+    await tower.startDescent()
+
+    const eventNodes = Object.values(tower.run!.towerGraph.nodes).filter((n) => n.kind === 'event')
+
+    expect(eventNodes.length).toBeGreaterThan(0) // graph should contain events
+    for (const n of eventNodes) {
+      expect(typeof n.eventId).toBe('string')
+      expect(n.eventId!.length).toBeGreaterThan(0)
+    }
+  })
+
+  it('non-event nodes have eventId undefined', async () => {
+    const tower = useTowerStore()
+    tower.startNewRun('swordsman', 'seed-t12-b')
+    await tower.startDescent()
+
+    const nonEventNodes = Object.values(tower.run!.towerGraph.nodes).filter((n) => n.kind !== 'event')
+
+    for (const n of nonEventNodes) {
+      expect(n.eventId).toBeUndefined()
+    }
+  })
+
+  it('eventId crystallization is deterministic by seed', async () => {
+    const tower1 = useTowerStore()
+    tower1.startNewRun('swordsman', 'seed-deterministic')
+    await tower1.startDescent()
+    const eventIds1 = Object.values(tower1.run!.towerGraph.nodes)
+      .filter((n) => n.kind === 'event')
+      .map((n) => n.eventId)
+
+    // Fresh pinia for second run — reset pool caches too so re-fetch is clean
+    setActivePinia(createPinia())
+    const { _resetEventPoolCache } = await import('@/tower/pools/event-pool')
+    _resetEventPoolCache()
+    const tower2 = useTowerStore()
+    tower2.startNewRun('swordsman', 'seed-deterministic')
+    await tower2.startDescent()
+    const eventIds2 = Object.values(tower2.run!.towerGraph.nodes)
+      .filter((n) => n.kind === 'event')
+      .map((n) => n.eventId)
+
+    expect(eventIds1.length).toBeGreaterThan(0)
+    expect(eventIds1.every((id) => typeof id === 'string' && id.length > 0)).toBe(true)
+    expect(eventIds1).toEqual(eventIds2)
+  })
+})
+
+describe('tower store — abandonBossRun', () => {
+  beforeEach(async () => {
+    setActivePinia(createPinia())
+    await clearTowerRun()
+    vi.restoreAllMocks()
+    const { _resetEncounterPoolCache } = await import('@/tower/pools/encounter-pool')
+    _resetEncounterPoolCache()
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        manifestVersion: 1,
+        entries: [
+          { id: 'mob-a', yamlPath: 'encounters/tower/mob-a.yaml', kind: 'mob', scoutSummary: 'A', rewards: { crystals: 10 } },
+          { id: 'mob-fallback', yamlPath: 'encounters/tower/mob-fallback.yaml', kind: 'mob', scoutSummary: 'fb', rewards: { crystals: 10 }, deprecated: 'never-in-pool' },
+        ],
+      }),
+    }) as any
+  })
+
+  it('clears pendingCombatNodeId + sets phase ended + persists', async () => {
+    const tower = useTowerStore()
+    await tower.startNewRun('swordsman', 'seed-abandon-boss')
+    await tower.startDescent()
+    // Simulate entering a boss combat
+    tower.run!.pendingCombatNodeId = tower.run!.towerGraph.bossNodeId
+    const saveSpy = vi.spyOn(persistence, 'saveTowerRun')
+    await tower.abandonBossRun()
+    expect(tower.run!.pendingCombatNodeId).toBeNull()
+    expect(tower.phase).toBe('ended')
+    expect(saveSpy).toHaveBeenCalled()
+  })
+
+  it('no-op + warn when no active run', () => {
+    const tower = useTowerStore()
+    const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    tower.abandonBossRun()
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('no active run'))
+    warnSpy.mockRestore()
   })
 })
 

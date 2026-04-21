@@ -6,6 +6,7 @@ import { loadEncounter } from '@/game/encounter-loader'
 import { DeathZoneManager } from '@/arena/death-zone-manager'
 import { ScriptRunner } from '@/timeline/script-runner'
 import { getJob } from '@/jobs'
+import type { EventBus } from '@/core/event-bus'
 import type { TimelineEntry } from '@/timeline/types'
 import type { TimelineAction } from '@/config/schema'
 import type { Entity } from '@/entity/entity'
@@ -14,15 +15,158 @@ import type { BuffDef, EntityType } from '@/core/types'
 import type { BuffSystem } from '@/combat/buff'
 import type { CombatResolver } from '@/game/combat-resolver'
 
+/**
+ * Death-window grace period (ms) for DoT-comeback resolution.
+ * When the player's hp drops to 0, combat does not end immediately — instead a
+ * DEATH_WINDOW_MS grace window opens during which player-sourced DoTs on the
+ * boss keep ticking. If a DoT tick brings boss.hp to 0 inside the window, the
+ * encounter resolves as `victory` (DoT-comeback). Otherwise the window closes
+ * with `wipe` on timeout or when the last player DoT expires.
+ */
+/**
+ * Default death-window length in ms — the unified buffer between player death
+ * and the result screen. During the window, boss timeline / AI / DoT ticks
+ * continue; if boss hp reaches 0 inside, player wins ("DoT comeback"). Otherwise
+ * the window closes with `wipe` at the deadline.
+ *
+ * Encounter yaml may override via top-level `death_window_ms: <ms>`. A value of
+ * `0` is accepted and means "no window; finalize on the very next tick".
+ */
+export const DEATH_WINDOW_MS = 5000
+
+/**
+ * Shortened cap applied when the player has no active DoT on any enemy at the
+ * moment of death. 2 seconds is enough for the red-vignette HUD overlay to
+ * appear and the death to land emotionally, but doesn't linger when there's
+ * nothing for the DoT-comeback mechanic to resolve. The encounter's configured
+ * window (or the default) still wins if it's shorter than this cap.
+ */
+export const DEATH_WINDOW_NO_DOT_CAP_MS = 1500
+
+export interface DeathWindowDeps {
+  bus: EventBus
+  player: Entity
+  boss: Entity
+  buffSystem: Pick<BuffSystem, 'clearDeathBuffs'>
+  scriptRunner: { disposeAll(): void }
+  /** Called on finalize with the resolution result. */
+  endBattle: (result: 'victory' | 'wipe') => void
+  /** Returns the current in-combat elapsed time in ms (for deadline + event payload). */
+  getElapsed: () => number
+  /**
+   * Per-encounter window length in ms. `0` is valid (= no window). Negative /
+   * undefined / non-number → fallback to `DEATH_WINDOW_MS`.
+   */
+  windowMs?: number
+  /**
+   * Predicate invoked ONCE at enter() to decide whether any enemy carries an
+   * active player-sourced DoT. When `false`, the window is capped to
+   * `DEATH_WINDOW_NO_DOT_CAP_MS` (or the configured windowMs, whichever is
+   * shorter). Default: checks `boss` only — callers with multiple enemies
+   * (e.g. live battle-runner) should pass a predicate iterating entityMgr.
+   */
+  hasPlayerDotOnEnemies?: () => boolean
+}
+
+export interface DeathWindowRuntime {
+  /** Open the death window. No-op if already active. Emits `player:died`, clears non-preserved buffs. */
+  enter(): void
+  /** Per-frame tick. Checks the three finalize conditions. No-op if inactive. */
+  tick(gameTime: number): void
+  /** Force-finalize with a specific result (used by the boss-death path is NOT via this — see notes). */
+  finalize(result: 'victory' | 'wipe'): void
+  /** Whether the window is currently open. */
+  isActive(): boolean
+  /** Current window state, or null if inactive. */
+  getState(): { startedAt: number; deadline: number } | null
+}
+
+/**
+ * Factory for the death-window runtime.
+ *
+ * Extracted into a pure factory so it can be unit-tested without spinning up
+ * Babylon.js, canvases, or YAML encounter loaders. The live battle-runner
+ * constructs one instance per encounter inside `initScene` and wires
+ *   - enter()  into the `damage:dealt` player-hp-zero branch
+ *   - tick()   into the `onLogicTick` loop (after `tickPeriodicBuffs` in GameScene)
+ *
+ * Finalize order of precedence per tick:
+ *   1. victory  — boss.hp <= 0 (no delay; DoT comeback wins instantly)
+ *   2. wipe     — gameTime >= deadline (timeout)
+ *
+ * The window length is a unified buffer regardless of DoT presence — even
+ * encounters with zero player DoTs wait the full window so the red-vignette
+ * HUD overlay is visible and the death has a dramatic beat. Per-encounter
+ * override: pass `deps.windowMs` (plumbed from encounter yaml `death_window_ms`).
+ */
+export function createDeathWindow(deps: DeathWindowDeps): DeathWindowRuntime {
+  const { bus, player, boss, buffSystem, scriptRunner, endBattle, getElapsed } = deps
+  // Base window: accept 0 explicitly. Only undefined / null / non-finite /
+  // negative values fall back to the default.
+  const baseWindow =
+    typeof deps.windowMs === 'number' && Number.isFinite(deps.windowMs) && deps.windowMs >= 0
+      ? deps.windowMs
+      : DEATH_WINDOW_MS
+  // Default predicate checks only boss — sufficient for unit tests and for
+  // encounters with a single enemy. Live battle-runner wires a predicate that
+  // iterates the full entity manager.
+  const hasDotCheck =
+    deps.hasPlayerDotOnEnemies ??
+    (() =>
+      boss.buffs.some(
+        (b) => b.periodic?.effectType === 'dot' && b.periodic.sourceCasterId === player.id,
+      ))
+  let state: { startedAt: number; deadline: number } | null = null
+
+  function enter(): void {
+    if (state) return
+    const now = getElapsed()
+    // No active player DoT on any enemy → cap the window so the player isn't
+    // left staring at nothing for the full baseWindow. If baseWindow is already
+    // shorter than the cap, the shorter value wins (respect explicit override).
+    const effectiveMs = hasDotCheck()
+      ? baseWindow
+      : Math.min(baseWindow, DEATH_WINDOW_NO_DOT_CAP_MS)
+    state = { startedAt: now, deadline: now + effectiveMs }
+    bus.emit('player:died', { gameTime: now })
+    buffSystem.clearDeathBuffs(player)
+    // Boss timeline / AI / DoT tick continue running until finalize is called.
+  }
+
+  function tick(gameTime: number): void {
+    if (!state) return
+    if (boss.hp <= 0) return finalize('victory')
+    if (gameTime >= state.deadline) return finalize('wipe')
+  }
+
+  function finalize(result: 'victory' | 'wipe'): void {
+    if (!state) return
+    state = null
+    scriptRunner.disposeAll()
+    bus.emit('combat:ended', { result, elapsed: getElapsed() })
+    endBattle(result)
+  }
+
+  return {
+    enter,
+    tick,
+    finalize,
+    isActive: () => state !== null,
+    getState: () => state,
+  }
+}
+
 /** Context passed to the battle init callback */
 export interface BattleInitContext {
   player: Entity
   buffSystem: BuffSystem
   combatResolver: CombatResolver
   registerBuffs: (buffs: Record<string, BuffDef>) => void
+  /** Encounter data loaded for this battle (exposes top-level fields like `conditions`). */
+  encounter: EncounterData
 }
 
-export type BattleInitCallback = (ctx: BattleInitContext) => void
+export type BattleInitCallback = (ctx: BattleInitContext) => void | Promise<void>
 
 let scene: GameScene | null = null
 
@@ -59,14 +203,14 @@ export async function startTimelineDemo(
   try {
     const encounter = await loadEncounter(url)
     loading.remove()
-    initScene(canvas, uiRoot, encounter, url, jobOverride, onInit)
+    await initScene(canvas, uiRoot, encounter, url, jobOverride, onInit)
   } catch (err) {
     loading.textContent = `Failed to load encounter: ${err}`
     loading.style.color = '#ff4444'
   }
 }
 
-function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData, encounterUrl: string, jobOverride?: string, onInit?: BattleInitCallback): void {
+async function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: EncounterData, encounterUrl: string, jobOverride?: string, onInit?: BattleInitCallback): Promise<void> {
   const engine = Engine.Instances.find(e => e.getRenderingCanvas() === canvas) as Engine | undefined
   if (!engine) throw new Error('No Engine found for canvas')
 
@@ -136,12 +280,16 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
   }
 
   // Init callback: apply practice mode buffs, echo, etc.
+  // Awaited so async activators (e.g. battlefield conditions fetching pool
+  // manifest) complete BEFORE combat engages — guarantees any applied buffs
+  // are in effect at frame 0.
   if (onInit) {
-    onInit({
+    await onInit({
       player: s.player,
       buffSystem: s.buffSystem,
       combatResolver: s.combatResolver,
       registerBuffs: (buffs) => s.combatResolver.registerBuffs(buffs),
+      encounter: enc,
     })
   }
 
@@ -244,6 +392,31 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     }),
   })
 
+  // Death-window runtime: player hp=0 opens a DEATH_WINDOW_MS grace period during
+  // which player-sourced DoTs on boss keep ticking. Finalizes via tick() below.
+  const deathWindow = createDeathWindow({
+    bus: s.bus,
+    player: s.player,
+    boss,
+    buffSystem: s.buffSystem,
+    scriptRunner,
+    endBattle: (result) => s.endBattle(result),
+    getElapsed: () => scheduler.combatElapsed,
+    windowMs: enc.deathWindowMs,
+    // Check ALL alive non-player entities for a player-sourced DoT. Keeps the
+    // full window when a DoT comeback is still possible; otherwise the no-DoT
+    // cap kicks in at enter().
+    hasPlayerDotOnEnemies: () =>
+      s.entityMgr.getAll().some(
+        (e) =>
+          e.id !== s.player.id &&
+          e.alive &&
+          e.buffs.some(
+            (b) => b.periodic?.effectType === 'dot' && b.periodic.sourceCasterId === s.player.id,
+          ),
+      ),
+  })
+
   // Helper: resolve entity from action (default: boss)
   function resolveEntity(action: TimelineAction): Entity | undefined {
     return action.entity ? entityMap.get(action.entity) : boss
@@ -269,12 +442,26 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
         s.endBattle('victory')
       }
     }
-    // Check player dead
+    // Check player dead — enter death window instead of ending combat immediately.
+    // Finalization (victory / wipe) happens from deathWindow.tick() in the logic loop.
     if (payload.target.id === s.player.id && payload.target.hp <= 0) {
-      if (!s.battleOver) {
-        scriptRunner.disposeAll()
-        s.bus.emit('combat:ended', { result: 'wipe', elapsed: scheduler.combatElapsed })
-        s.endBattle('wipe')
+      if (!s.battleOver && !deathWindow.isActive()) {
+        // Pre-combat death (e.g. dev `kill` before engagement) would lock up
+        // because scheduler.combatElapsed never advances pre-engage; force
+        // engage here so the tick loop can finalize the window normally.
+        if (!combatStarted) engageCombat()
+        // Flip alive + zero MP + interrupt any in-progress cast + emit
+        // entity:died so downstream systems (input-driver gate, target-clear,
+        // HUD) see the dead state consistently. entityMgr.destroy is NOT
+        // called — the player entity reference must stay valid for the death
+        // window (DoT ticks on enemies still reference it as caster).
+        if (s.player.alive) {
+          s.player.alive = false
+          s.player.mp = 0
+          if (s.player.casting) s.skillResolver.interruptCast(s.player)
+          s.bus.emit('entity:died', { entity: s.player })
+        }
+        deathWindow.enter()
       }
     }
     // Mob death: destroy entity when hp reaches 0
@@ -300,7 +487,9 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     }
   })
 
-  // Generic mob death cleanup: clear stale target + cancel orphan AOE zones
+  // Generic entity death cleanup: clear stale target + cancel orphan AOE zones.
+  // Also triggers the death window when the player dies from non-damage causes
+  // (e.g. maxHp ≤ 0 from vitality_down stacking).
   s.bus.on('entity:died', (payload: { entity: Entity }) => {
     const dead = payload.entity
     if (s.player.target === dead.id) {
@@ -308,6 +497,9 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
       s.bus.emit('target:released', { entity: s.player })
     }
     s.zoneMgr.cancelAllByCaster(dead.id)
+    if (dead.id === s.player.id && !deathWindow.isActive()) {
+      deathWindow.enter()
+    }
   })
 
   // Timeline actions
@@ -500,6 +692,11 @@ function initScene(canvas: HTMLCanvasElement, uiRoot: HTMLDivElement, enc: Encou
     }
 
     updateTimelineSignal(s, dt, scheduler, enc.skills)
+
+    // Death-window finalize check: runs AFTER tickPeriodicBuffs (fired in
+    // GameScene.start before onLogicTick) so this frame's DoT ticks have
+    // already had a chance to bring boss.hp to 0.
+    deathWindow.tick(scheduler.combatElapsed)
   }
 
   s.start()

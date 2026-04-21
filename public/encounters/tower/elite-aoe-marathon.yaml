@@ -1,0 +1,167 @@
+# elite-aoe-marathon.yaml — 精英：无尽风暴
+# AOE 马拉松向（连环小圆 + 十字 + 连续点名高密度组合）
+# 核心循环（25s 周期）：2s 3 连小圆 / 10s 十字 / 18s 4 连点名
+# 超时：150s 叠愤怒 + loop 回 25s 重演
+# TTK 目标：120-150s；攻击较低但 AOE 密集
+
+arena:
+  name: 无尽风暴之域
+  shape: circle
+  radius: 17
+  boundary: wall
+
+entities:
+  boss:
+    type: mob
+    group: boss
+    hp: 150000
+    attack: 200
+    speed: 2.8
+    size: 1.5
+    facing: 180
+    position: { x: 0, y: 0, z: 0 }
+    autoAttackRange: 4
+    aggroRange: 10
+
+player:
+  position: { x: 0, y: -14, z: 0 }
+
+boss_ai:
+  chaseRange: 4
+  autoAttackRange: 4
+  autoAttackInterval: 3000
+  aggroRange: 10
+
+local_buffs:
+  elite_enrage:
+    name: 愤怒
+    type: buff
+    stackable: true
+    maxStacks: 20
+    duration: 999999
+    effects:
+      - { type: damage_increase, value: 0.15 }
+
+local_skills:
+  boss_auto:
+    name: 普攻
+    type: ability
+    targetType: single
+    requiresTarget: true
+    range: 4
+    effects: [{ type: damage, potency: 1 }]
+  chain_aoe_1:
+    name: 连环乱雷·一
+    type: spell
+    castTime: 1500
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: target }
+        direction: { type: none }
+        shape: { type: circle, radius: 4 }
+        resolveDelay: 1500
+        hitEffectDuration: 400
+        effects:
+          - { type: damage, potency: 3.0 }
+  chain_aoe_2:
+    name: 连环乱雷·二
+    type: spell
+    castTime: 1500
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: target }
+        direction: { type: none }
+        shape: { type: circle, radius: 4 }
+        resolveDelay: 1500
+        hitEffectDuration: 400
+        effects:
+          - { type: damage, potency: 3.0 }
+  chain_aoe_3:
+    name: 连环乱雷·三
+    type: spell
+    castTime: 1500
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: target }
+        direction: { type: none }
+        shape: { type: circle, radius: 4 }
+        resolveDelay: 1500
+        hitEffectDuration: 400
+        effects:
+          - { type: damage, potency: 3.0 }
+  cross_aoe:
+    name: 十字切割
+    type: spell
+    castTime: 2500
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 0 }
+        shape: { type: rect, length: 30, width: 5 }
+        resolveDelay: 2500
+        hitEffectDuration: 400
+        effects:
+          - { type: damage, potency: 5.0 }
+      - anchor: { type: caster }
+        direction: { type: fixed, angle: 90 }
+        shape: { type: rect, length: 30, width: 5 }
+        resolveDelay: 2500
+        hitEffectDuration: 400
+        effects:
+          - { type: damage, potency: 5.0 }
+  multi_marker_1:
+    name: 连续点名
+    type: spell
+    castTime: 1500
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: target }
+        direction: { type: none }
+        shape: { type: circle, radius: 3 }
+        resolveDelay: 1500
+        hitEffectDuration: 400
+        effects:
+          - { type: damage, potency: 3.5 }
+  elite_enrage_stack:
+    name: 愤怒叠层
+    type: ability
+    targetType: single
+    requiresTarget: false
+    range: 0
+    effects:
+      - { type: apply_buff, buffId: elite_enrage, target: caster }
+
+skills: {}
+
+phases:
+  phase_default:
+    actions:
+      - { at: 0, action: enable_ai }
+      - { at: 2000, action: use, use: chain_aoe_1 }
+      - { at: 3500, action: use, use: chain_aoe_2 }
+      - { at: 5000, action: use, use: chain_aoe_3 }
+      - { at: 10000, action: use, use: cross_aoe }
+      - { at: 18000, action: use, use: multi_marker_1 }
+      - { at: 19500, action: use, use: multi_marker_1 }
+      - { at: 21000, action: use, use: multi_marker_1 }
+      - { at: 22500, action: use, use: multi_marker_1 }
+      - { at: 27000, action: use, use: chain_aoe_1 }
+      - { at: 28500, action: use, use: chain_aoe_2 }
+      - { at: 30000, action: use, use: chain_aoe_3 }
+      - { at: 35000, action: use, use: cross_aoe }
+      - { at: 43000, action: use, use: multi_marker_1 }
+      - { at: 44500, action: use, use: multi_marker_1 }
+      - { at: 46000, action: use, use: multi_marker_1 }
+      - { at: 47500, action: use, use: multi_marker_1 }
+      - { at: 150000, action: use, use: elite_enrage_stack }
+      - { at: 150001, action: loop, loop: 25000 }

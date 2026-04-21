@@ -68,6 +68,18 @@ export class PlayerInputDriver {
   update(dt: number): 'pause' | null {
     const p = this.entity
 
+    // Dead: player input is fully gated. Still tick skillResolver (so boss /
+    // other entities continue casting during the death window) and tickRegen
+    // (internally gates on `p.alive` so player HP/MP regen naturally stops).
+    if (!p.alive) {
+      this.input.consumeSkillPress()
+      this.input.consumeEsc()
+      this.queuedSkill = null
+      this.skillResolver.updateAll(dt)
+      this.tickRegen(p, dt)
+      return null
+    }
+
     // ESC priority: interrupt cast → release target → pause
     if (this.input.consumeEsc()) {
       if (p.casting) {
@@ -239,13 +251,14 @@ export class PlayerInputDriver {
   }
 
   private tickRegen(p: Entity, dt: number): void {
-    if (p.alive && p.hp < p.maxHp) {
+    const maxHp = this.buffSystem.getMaxHp(p)
+    if (p.alive && p.hp < maxHp) {
       this.regenTimer += dt
       if (this.regenTimer >= REGEN_INTERVAL) {
         this.regenTimer -= REGEN_INTERVAL
         const rate = p.inCombat ? REGEN_RATE_COMBAT : REGEN_RATE_IDLE
-        const heal = Math.floor(p.maxHp * rate)
-        p.hp = Math.min(p.maxHp, p.hp + heal)
+        const heal = Math.floor(maxHp * rate)
+        p.hp = Math.min(maxHp, p.hp + heal)
       }
     }
     if (!this.config.noMpRegen && p.alive && p.maxMp > 0 && p.mp < p.maxMp) {

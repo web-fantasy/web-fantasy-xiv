@@ -135,7 +135,9 @@ export class CombatResolver {
           // Heal only applies to friendly targets (same type as caster); otherwise fallback to caster
           const friendlyTarget = (target && caster && target.type === caster.type) ? target : caster
           if (!friendlyTarget) break
-          const healAmount = Math.floor((caster?.attack ?? friendlyTarget.attack) * effect.potency)
+          // Route attack through getAttack so attack_modifier buffs scale heals too.
+          const healSource = caster ?? friendlyTarget
+          const healAmount = Math.floor(this.buffSystem.getAttack(healSource) * effect.potency)
           friendlyTarget.hp = Math.min(friendlyTarget.maxHp, friendlyTarget.hp + healAmount)
           this.bus.emit('damage:dealt', { source: caster ?? friendlyTarget, target: friendlyTarget, amount: -healAmount, skill: null })
           break
@@ -236,14 +238,17 @@ export class CombatResolver {
     }
 
     let dmg: number
+    // Freeze caster's derived attack (base × attack_modifier) once per hit so
+    // both branches reference the same value.
+    const casterAttack = this.buffSystem.getAttack(caster)
     if (dmgTypes.includes('special')) {
       // Special damage: ignores mitigation, shields, and undying
-      dmg = Math.floor(caster.attack * potency)
+      dmg = Math.floor(casterAttack * potency)
       target.hp = Math.max(0, target.hp - dmg)
     } else {
       const vulnerability = this.buffSystem.getVulnerability(target)
       dmg = calculateDamage({
-        attack: caster.attack,
+        attack: casterAttack,
         potency,
         increases: [...this.buffSystem.getDamageIncreases(caster), vulnerability, ...extraIncreases],
         mitigations: this.buffSystem.getMitigations(target),

@@ -1,0 +1,135 @@
+# elite-fortune-trial.yaml — 精英：命运试炼者
+# DPS check 向（以巴儿达木霸道的背对 + 陨石 + 末日审判机制为灵感）
+# 核心循环（50s 周期）：普攻 / 8s 背对读条 / 18s 陨石点名 / 28s DPS check 末日
+# 超时：180s 叠愤怒 + loop 回 30s 重演
+# TTK 目标：120-180s；E4 难度
+
+arena:
+  name: 命运试炼之间
+  shape: circle
+  radius: 16
+  boundary: wall
+
+entities:
+  boss:
+    type: mob
+    group: boss
+    hp: 180000
+    attack: 280
+    speed: 3.2
+    size: 1.8
+    facing: 180
+    position: { x: 0, y: 0, z: 0 }
+    autoAttackRange: 4
+    aggroRange: 10
+
+player:
+  position: { x: 0, y: -13, z: 0 }
+
+boss_ai:
+  chaseRange: 4
+  autoAttackRange: 4
+  autoAttackInterval: 3000
+  aggroRange: 10
+
+local_buffs:
+  elite_enrage:
+    name: 愤怒
+    type: buff
+    stackable: true
+    maxStacks: 20
+    duration: 999999
+    effects:
+      - { type: damage_increase, value: 0.15 }
+  meteor_debuff:
+    name: 陨石标记
+    type: debuff
+    stackable: true
+    maxStacks: 4
+    duration: 30000
+    effects:
+      - { type: vulnerability, value: 0.10 }
+
+local_skills:
+  boss_auto:
+    name: 普攻
+    type: ability
+    targetType: single
+    requiresTarget: true
+    range: 4
+    effects: [{ type: damage, potency: 1 }]
+  back_attack_tell:
+    name: 邪神铁拳（背对）
+    type: spell
+    castTime: 5000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: caster_facing }
+        shape: { type: fan, radius: 14, angle: 180 }
+        resolveDelay: 5000
+        hitEffectDuration: 500
+        effects:
+          - { type: damage, potency: 5.5 }
+  meteor_mark:
+    name: 陨石落下
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: target }
+        direction: { type: none }
+        shape: { type: circle, radius: 5 }
+        resolveDelay: 5000
+        hitEffectDuration: 500
+        effects:
+          - { type: damage, potency: 4.0 }
+          - { type: apply_buff, buffId: meteor_debuff }
+  dps_check_doom:
+    name: 末日审判
+    type: spell
+    castTime: 4000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 30 }
+        resolveDelay: 4000
+        hitEffectDuration: 500
+        effects:
+          - { type: damage, potency: 8.0 }
+  elite_enrage_stack:
+    name: 愤怒叠层
+    type: ability
+    targetType: single
+    requiresTarget: false
+    range: 0
+    effects:
+      - { type: apply_buff, buffId: elite_enrage, target: caster }
+
+skills: {}
+
+phases:
+  phase_default:
+    actions:
+      - { at: 0, action: enable_ai }
+      - { at: 8000, action: use, use: back_attack_tell }
+      - { at: 18000, action: use, use: meteor_mark }
+      - { at: 28000, action: use, use: dps_check_doom }
+      - { at: 58000, action: use, use: back_attack_tell }
+      - { at: 68000, action: use, use: meteor_mark }
+      - { at: 78000, action: use, use: dps_check_doom }
+      - { at: 108000, action: use, use: back_attack_tell }
+      - { at: 118000, action: use, use: meteor_mark }
+      - { at: 128000, action: use, use: dps_check_doom }
+      - { at: 158000, action: use, use: back_attack_tell }
+      - { at: 168000, action: use, use: meteor_mark }
+      - { at: 178000, action: use, use: dps_check_doom }
+      - { at: 180000, action: use, use: elite_enrage_stack }
+      - { at: 180001, action: loop, loop: 30000 }

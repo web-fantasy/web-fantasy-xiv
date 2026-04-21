@@ -139,3 +139,143 @@ describe('BuffSystem', () => {
     expect(system.getSpeedModifier(entity)).toBeCloseTo(0.2)
   })
 })
+
+describe('BuffSystem modifier stats', () => {
+  function setupWith(opts: { attack?: number; hp?: number }) {
+    const bus = new EventBus()
+    const buffSystem = new BuffSystem(bus)
+    const player = createEntity({
+      id: 'p1',
+      type: 'player',
+      hp: opts.hp ?? 10000,
+      maxHp: opts.hp ?? 10000,
+      attack: opts.attack ?? 100,
+    })
+    return { bus, buffSystem, player }
+  }
+
+  it('getAttackModifier returns 0 when no attack_modifier buffs', () => {
+    const { buffSystem, player } = setupWith({ attack: 1000 })
+    expect(buffSystem.getAttackModifier(player)).toBe(0)
+    expect(buffSystem.getAttack(player)).toBe(1000)
+  })
+
+  it('getAttackModifier sums multiple attack_modifier effects', () => {
+    const { buffSystem, player } = setupWith({ attack: 1000 })
+    const def1: BuffDef = {
+      id: 'atk_a', name: 'A', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'attack_modifier', value: 0.25 }],
+    }
+    const def2: BuffDef = {
+      id: 'atk_b', name: 'B', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'attack_modifier', value: 0.10 }],
+    }
+    buffSystem.applyBuff(player, def1, 'self')
+    buffSystem.applyBuff(player, def2, 'self')
+    expect(buffSystem.getAttackModifier(player)).toBeCloseTo(0.35)
+    expect(buffSystem.getAttack(player)).toBe(1350) // 1000 * 1.35
+  })
+
+  it('getMaxHpModifier + getMaxHp parallel behavior', () => {
+    const { buffSystem, player } = setupWith({ hp: 10000 })
+    const def: BuffDef = {
+      id: 'hp_up', name: 'HP Up', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'max_hp_modifier', value: 0.25 }],
+    }
+    buffSystem.applyBuff(player, def, 'self')
+    expect(buffSystem.getMaxHpModifier(player)).toBeCloseTo(0.25)
+    expect(buffSystem.getMaxHp(player)).toBe(12500) // 10000 * 1.25
+  })
+
+  it('max_hp_modifier does NOT modify current hp on apply (FF14 strict)', () => {
+    const { buffSystem, player } = setupWith({ hp: 10000 })
+    player.hp = 10000 // full hp
+    const def: BuffDef = {
+      id: 'hp_up', name: 'HP Up', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'max_hp_modifier', value: 0.25 }],
+    }
+    buffSystem.applyBuff(player, def, 'self')
+    expect(player.hp).toBe(10000) // unchanged
+    expect(buffSystem.getMaxHp(player)).toBe(12500) // upper limit raised
+  })
+
+  it('attack_modifier / max_hp_modifier isolated from damage_increase pool', () => {
+    const { buffSystem, player } = setupWith({ attack: 1000 })
+    const atkMod: BuffDef = {
+      id: 'atk_mod', name: 'ATK Mod', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'attack_modifier', value: 0.25 }],
+    }
+    const dmgInc: BuffDef = {
+      id: 'dmg_inc', name: 'DMG Inc', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'damage_increase', value: 0.50 }],
+    }
+    buffSystem.applyBuff(player, atkMod, 'self')
+    buffSystem.applyBuff(player, dmgInc, 'self')
+    // attack_modifier goes through base-stat multiplicative layer: 1000 × 1.25 = 1250
+    expect(buffSystem.getAttack(player)).toBe(1250)
+    // damage_increase still flows through the additive pool (does not affect getAttack)
+    expect(buffSystem.getDamageIncreases(player)).toContain(0.50)
+  })
+})
+
+describe('BuffSystem.clearDeathBuffs', () => {
+  function setup() {
+    const bus = new EventBus()
+    const buffSystem = new BuffSystem(bus)
+    const player = createEntity({
+      id: 'p1',
+      type: 'player',
+      hp: 10000,
+      maxHp: 10000,
+      attack: 100,
+    })
+    return { bus, buffSystem, player }
+  }
+
+  it('removes buffs without preserveOnDeath flag', () => {
+    const { buffSystem, player } = setup()
+    const regularDef: BuffDef = {
+      id: 'regular', name: 'Regular', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [{ type: 'mitigation', value: 0.2 }],
+    }
+    buffSystem.applyBuff(player, regularDef, 'self')
+    expect(player.buffs).toHaveLength(1)
+
+    buffSystem.clearDeathBuffs(player)
+    expect(player.buffs).toHaveLength(0)
+  })
+
+  it('retains buffs with preserveOnDeath: true', () => {
+    const { buffSystem, player } = setup()
+    const preservedDef: BuffDef = {
+      id: 'preserved', name: 'Preserved', type: 'buff', duration: 30000,
+      stackable: false, maxStacks: 1, preserveOnDeath: true,
+      effects: [{ type: 'mitigation', value: 0.2 }],
+    }
+    buffSystem.applyBuff(player, preservedDef, 'self')
+    expect(player.buffs).toHaveLength(1)
+
+    buffSystem.clearDeathBuffs(player)
+    expect(player.buffs).toHaveLength(1)
+    expect(player.buffs[0].defId).toBe('preserved')
+  })
+
+  it('mixed: retains preserveOnDeath, removes regular', () => {
+    const { buffSystem, player } = setup()
+    const preserved: BuffDef = {
+      id: 'preserved', name: 'P', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      preserveOnDeath: true, effects: [],
+    }
+    const regular: BuffDef = {
+      id: 'regular', name: 'R', type: 'buff', duration: 30000, stackable: false, maxStacks: 1,
+      effects: [],
+    }
+    buffSystem.applyBuff(player, preserved, 'self')
+    buffSystem.applyBuff(player, regular, 'self')
+    expect(player.buffs).toHaveLength(2)
+
+    buffSystem.clearDeathBuffs(player)
+    expect(player.buffs).toHaveLength(1)
+    expect(player.buffs[0].defId).toBe('preserved')
+  })
+})

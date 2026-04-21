@@ -41,7 +41,9 @@ export function buildPeriodicSnapshot(
   }
   // dot / hot
   return {
-    attack: caster.attack,
+    // Route through BuffSystem.getAttack so attack_modifier buffs are frozen
+    // into the snapshot (spec §12 contract 5).
+    attack: buffSystem.getAttack(caster),
     casterIncreases: buffSystem.getDamageIncreases(caster),
     potency: effect.potency,
   }

@@ -97,6 +97,39 @@ export const COMMON_BUFFS: Record<string, BuffDef> = {
     preserveOnDeath: true,
     effects: [{ type: 'damage_increase', value: 9.99 }],
   },
+  /**
+   * Echo (超越之力) — phase 5 battlefield condition buff.
+   * - Activates on boss combat when determination <= 2 (threshold configurable via condition pool).
+   * - Three modifier effects: +25% base attack / +25% mitigation / +25% base maxHp.
+   * - preserveOnDeath: true — reserved for future raise / in-combat respawn systems
+   *   (phase 5 has no visible consumer scenario since echo is scene-bound).
+   * - duration: 0 — permanent (tied to scene lifetime, no buff-system expiration).
+   */
+  echo: {
+    id: 'echo',
+    name: '超越之力',
+    description: '攻击 +25% / 减伤 +25% / 最大生命 +25%',
+    type: 'buff',
+    duration: 0,
+    stackable: false,
+    maxStacks: 1,
+    preserveOnDeath: true,
+    effects: [
+      { type: 'attack_modifier', value: 0.25 },
+      { type: 'mitigation', value: 0.25 },
+      { type: 'max_hp_modifier', value: 0.25 },
+    ],
+  },
+  vitality_down: {
+    id: 'vitality_down',
+    name: '体力衰减',
+    description: '最大生命降低 10%。最多 10 层，叠满即死。',
+    type: 'debuff',
+    duration: 0,
+    stackable: true,
+    maxStacks: 10,
+    effects: [{ type: 'max_hp_modifier', value: -0.10 }],
+  },
 }
 
 // Map version for tooltip lookups

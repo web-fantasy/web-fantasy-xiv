@@ -26,8 +26,39 @@ export class EntityRenderer {
     })
 
     bus.on('entity:died', (payload: { entity: Entity }) => {
-      this.removeMesh(payload.entity.id)
+      // Player death: keep the mesh but desaturate to gray as a temporary
+      // "corpse" until a proper corpse mesh is designed. Other entities
+      // (mobs / bosses) remove their mesh normally.
+      if (payload.entity.type === 'player') {
+        this.grayOut(payload.entity.id)
+      } else {
+        this.removeMesh(payload.entity.id)
+      }
     })
+  }
+
+  /**
+   * Desaturate an entity's body to gray + dim the facing arrow. Used for
+   * player death so the capsule remains visible during the death window.
+   * No-op if the mesh group has already been disposed.
+   */
+  private grayOut(entityId: string): void {
+    const group = this.meshes.get(entityId)
+    if (!group) return
+    const GRAY = new Color3(0.4, 0.4, 0.4)
+    const bodyMat = group.body.material as StandardMaterial | null
+    if (bodyMat) {
+      bodyMat.diffuseColor = GRAY
+      bodyMat.emissiveColor = Color3.Black()
+      bodyMat.alpha = 0.6
+    }
+    const arrowMat = group.facingArrow.material as StandardMaterial | null
+    if (arrowMat) {
+      arrowMat.diffuseColor = GRAY.scale(1.1)
+    }
+    if (group.rangeRing) group.rangeRing.isVisible = false
+    if (group.aggroFan) group.aggroFan.isVisible = false
+    group.baseEmissive = Color3.Black()
   }
 
   private createMesh(entity: Entity): void {

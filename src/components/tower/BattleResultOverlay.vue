@@ -3,8 +3,9 @@ import { computed } from 'vue'
 
 interface Props {
   result: 'victory' | 'wipe'
+  encounterKind: 'mob' | 'elite' | 'boss'
+  determination: number
   encounterRewardCrystals: number
-  currentDetermination: number
 }
 
 const props = defineProps<Props>()
@@ -12,11 +13,20 @@ const props = defineProps<Props>()
 const emit = defineEmits<{
   retry: []
   abandon: []
+  settle: []
   continue: []
 }>()
 
-const canRetry = computed(() => props.currentDetermination > 0)
-const abandonCrystals = computed(() => Math.floor(props.encounterRewardCrystals / 2))
+// Determination deduction is applied by the store on combat:ended { wipe }
+// BEFORE this overlay renders (spec §4.1 / §8.4). So `determination` here is
+// the POST-deduction value — 0 means "cannot retry, must settle".
+const canRetry = computed(() => props.determination > 0)
+
+const abandonLabel = computed(() =>
+  props.encounterKind === 'boss'
+    ? '放弃（整局结束）'
+    : `放弃（拿 50% 水晶低保 +${Math.floor(props.encounterRewardCrystals / 2)} 💎）`,
+)
 </script>
 
 <template lang="pug">
@@ -28,21 +38,18 @@ const abandonCrystals = computed(() => Math.floor(props.encounterRewardCrystals 
       template(v-if="result === 'victory'")
         .reward 获得 💎 {{ encounterRewardCrystals }}
       template(v-else)
-        .status 当前决心：{{ currentDetermination }} ❤️
-        .hint 已消耗 1 决心
+        .status 当前决心：{{ determination }} ❤️
     .result-actions
+      //- ───────── Victory: single continue button (phase 4 behavior preserved) ─────────
       template(v-if="result === 'victory'")
         button.btn.primary(type="button" @click="emit('continue')") 继续
+      //- ───────── Wipe + determination > 0: [重试] [放弃(kind-aware)] ─────────
+      template(v-else-if="canRetry")
+        button.btn.primary(type="button" @click="emit('retry')") 重试
+        button.btn.secondary(type="button" @click="emit('abandon')") {{ abandonLabel }}
+      //- ───────── Wipe + determination == 0: [进入结算] only ─────────
       template(v-else)
-        button.btn.primary(
-          type="button"
-          :disabled="!canRetry"
-          @click="emit('retry')"
-        )
-          span(v-if="canRetry") 重试
-          span(v-else) 决心已耗尽
-        button.btn.secondary(type="button" @click="emit('abandon')")
-          | 放弃（+{{ abandonCrystals }} 💎）
+        button.btn.primary(type="button" @click="emit('settle')") 进入结算
 </template>
 
 <style lang="scss" scoped>
@@ -83,7 +90,6 @@ const abandonCrystals = computed(() => Math.floor(props.encounterRewardCrystals 
 
   .reward { font-size: 16px; color: #ffdd88; }
   .status { font-size: 15px; }
-  .hint { font-size: 12px; color: #888; margin-top: 4px; }
 }
 
 .result-actions {

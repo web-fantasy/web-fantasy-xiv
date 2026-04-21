@@ -23,6 +23,14 @@ export interface EncounterData {
   timeline: TimelineAction[]
   /** Phase definitions (always has at least phase_default) */
   phases: PhaseDef[]
+  /** Battlefield condition ids to activate at the start of this encounter */
+  conditions?: string[]
+  /**
+   * Per-encounter death-window override in ms. When omitted, the runtime uses
+   * `DEATH_WINDOW_MS` (5000). Use shorter (~2000) for quick mob fights or
+   * longer (~10000) for dramatic boss DoT-comeback windows.
+   */
+  deathWindowMs?: number
 }
 
 /**
@@ -131,7 +139,34 @@ export function parseEncounterYaml(yamlText: string): EncounterData {
   const phases = parsePhases(raw.phases, raw.timeline)
   const timeline = phases.find((p) => p.id === 'phase_default')?.actions ?? []
 
-  return { arena, entities, boss, player, bossAI, skills, timeline, phases, localBuffs }
+  // Conditions (optional list of battlefield-condition ids)
+  let conditions: string[] | undefined
+  if (raw.conditions !== undefined) {
+    if (!Array.isArray(raw.conditions)) {
+      throw new Error('[encounter-loader] `conditions` must be an array of string ids')
+    }
+    for (const c of raw.conditions) {
+      if (typeof c !== 'string') {
+        throw new Error('[encounter-loader] `conditions` entries must be strings')
+      }
+    }
+    conditions = raw.conditions as string[]
+  }
+
+  // Per-encounter death-window override (optional; key is snake_case in yaml).
+  let deathWindowMs: number | undefined
+  if (raw.death_window_ms !== undefined) {
+    if (typeof raw.death_window_ms !== 'number' || !Number.isFinite(raw.death_window_ms) || raw.death_window_ms < 0) {
+      throw new Error('[encounter-loader] `death_window_ms` must be a non-negative number (ms)')
+    }
+    deathWindowMs = raw.death_window_ms
+  }
+
+  return {
+    arena, entities, boss, player, bossAI, skills, timeline, phases, localBuffs,
+    ...(conditions !== undefined ? { conditions } : {}),
+    ...(deathWindowMs !== undefined ? { deathWindowMs } : {}),
+  }
 }
 
 /** Parse a single entity definition from YAML into CreateEntityOptions */

@@ -1,0 +1,163 @@
+# boss-tower-warden.yaml — 塔之守望者（phase 5 MVP 退化版）
+# 3 阶段线性时间轴 + 阶段切换 invul + 硬狂暴 @ t=240s
+# TTK 目标：3-5 min；echo 在开战时激活（若决心 ≤ 2）
+# 硬狂暴 = timeline 最后一条，单体超高伤直接秒杀玩家
+
+conditions:
+  - echo-boss
+
+arena:
+  name: 塔之巅
+  shape: circle
+  radius: 20
+  boundary: wall
+
+entities:
+  boss:
+    type: mob
+    group: boss
+    hp: 600000
+    attack: 350
+    speed: 3
+    size: 2.2
+    facing: 180
+    position: { x: 0, y: 0, z: 0 }
+    autoAttackRange: 5
+    aggroRange: 12
+
+player:
+  position: { x: 0, y: -15, z: 0 }
+
+boss_ai:
+  chaseRange: 5
+  autoAttackRange: 5
+  autoAttackInterval: 3000
+  aggroRange: 12
+
+local_buffs:
+  phase_invul:
+    name: 阶段切换
+    type: buff
+    stackable: false
+    maxStacks: 1
+    duration: 5000
+    effects:
+      - { type: invulnerable }
+
+local_skills:
+  boss_auto:
+    name: 普攻
+    type: ability
+    targetType: single
+    requiresTarget: true
+    range: 5
+    effects: [{ type: damage, potency: 1 }]
+  p1_aoe:
+    name: 黯蚀波
+    type: spell
+    castTime: 2500
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 7 }
+        resolveDelay: 2500
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 4.5 }]
+  p1_marker:
+    name: 定罪点名
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: target }
+        direction: { type: none }
+        shape: { type: circle, radius: 5 }
+        resolveDelay: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 4.0 }]
+  p2_shrink_marker:
+    name: 缩圈点名
+    type: spell
+    castTime: 3000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: target }
+        direction: { type: none }
+        shape: { type: circle, radius: 3 }
+        resolveDelay: 3000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 5.5 }]
+  p3_fulminating:
+    name: 审判雷霆
+    type: spell
+    castTime: 2000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 8 }
+        resolveDelay: 2000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 5.0 }]
+  enrage:
+    name: 灭尽（硬狂暴）
+    type: spell
+    castTime: 5000
+    targetType: aoe
+    requiresTarget: false
+    range: 0
+    zones:
+      - anchor: { type: caster }
+        direction: { type: none }
+        shape: { type: circle, radius: 50 }
+        resolveDelay: 5000
+        hitEffectDuration: 500
+        effects: [{ type: damage, potency: 9999 }]
+  apply_phase_invul:
+    name: 阶段切换 invul
+    type: ability
+    targetType: single
+    requiresTarget: false
+    range: 0
+    effects:
+      - { type: apply_buff, buffId: phase_invul, target: caster }
+
+skills: {}
+
+phases:
+  phase_default:
+    actions:
+      - { at: 0, action: enable_ai }
+      # Phase 1: 0–80s
+      - { at: 8000, action: use, use: p1_aoe }
+      - { at: 20000, action: use, use: p1_marker }
+      - { at: 32000, action: use, use: p1_aoe }
+      - { at: 50000, action: use, use: p1_marker }
+      - { at: 65000, action: use, use: p1_aoe }
+      # Phase 2 transition: 80s — boss invul 5s
+      - { at: 80000, action: use, use: apply_phase_invul }
+      # Phase 2: 85–160s
+      - { at: 95000, action: use, use: p1_aoe }
+      - { at: 108000, action: use, use: p2_shrink_marker }
+      - { at: 122000, action: use, use: p1_marker }
+      - { at: 135000, action: use, use: p2_shrink_marker }
+      - { at: 150000, action: use, use: p1_aoe }
+      # Phase 3 transition: 160s — boss invul 5s
+      - { at: 160000, action: use, use: apply_phase_invul }
+      # Phase 3: 165–240s（机制密集 + p3 新招）
+      - { at: 170000, action: use, use: p3_fulminating }
+      - { at: 185000, action: use, use: p2_shrink_marker }
+      - { at: 195000, action: use, use: p3_fulminating }
+      - { at: 210000, action: use, use: p1_marker }
+      - { at: 220000, action: use, use: p3_fulminating }
+      # 硬狂暴 @ 240s
+      - { at: 240000, action: use, use: enrage }

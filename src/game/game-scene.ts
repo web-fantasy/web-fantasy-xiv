@@ -21,7 +21,7 @@ import { DisplacementAnimator } from './displacement-animator'
 import { DevTerminal } from '@/devtools/dev-terminal'
 import { CommandRegistry } from '@/devtools/commands'
 import { COMMON_BUFFS } from '@/jobs/commons/buffs'
-import type { ArenaDef, BuffDef } from '@/core/types'
+import type { ArenaDef, BuffDef, DamageType } from '@/core/types'
 import type { Entity } from '@/entity/entity'
 import type { CreateEntityOptions } from '@/entity/entity'
 import type { TimelineEntry } from '@/timeline/types'
@@ -231,6 +231,145 @@ export class GameScene {
       this.combatResolver.registerBuffs({ one_punch_man: buff })
       this.buffSystem.applyBuff(this.player, buff, 'devtools')
       return `Applied ${buff.name}: ${buff.description}`
+    })
+
+    registry.register(
+      'status',
+      '[dev] status --set|--add <buff_id> [--stack <n>] [--duration <ms>] [--target <id>] | status --remove <buff_id> [--target <id>] — manage status effects',
+      (args) => {
+        if (!this.player) return 'Player not spawned yet.'
+        const set = typeof args.set === 'string' ? args.set : typeof args.add === 'string' ? args.add : undefined
+        const remove = typeof args.remove === 'string' ? args.remove : undefined
+        if (!set && !remove) {
+          const ids = Object.keys(COMMON_BUFFS).join(', ')
+          return `Usage: status --set|--add <buff_id> [--stack <n>] [--duration <ms>] | status --remove <buff_id>\nAvailable: ${ids}`
+        }
+        if (set && remove) return 'Cannot --set/--add and --remove at the same time.'
+        const targets = this.resolveDevTargets(args.target, undefined)
+        if (targets.length === 0) return 'No matching entities.'
+
+        if (set) {
+          const buff = COMMON_BUFFS[set]
+          if (!buff) return `Unknown buff '${set}'. Available: ${Object.keys(COMMON_BUFFS).join(', ')}`
+          const stacks = typeof args.stack === 'number' ? args.stack : undefined
+          const duration = typeof args.duration === 'number' ? args.duration : undefined
+          for (const t of targets) {
+            this.combatResolver.registerBuffs({ [set]: buff })
+            this.buffSystem.applyBuff(t, buff, 'devtools', stacks, duration)
+          }
+          const stackStr = stacks !== undefined ? ` x${stacks}` : ''
+          const durStr = duration !== undefined ? ` (duration=${duration}ms)` : ''
+          return `Applied ${buff.name}${stackStr} to ${targets.length} target(s): ${targets.map((t) => t.id).join(', ')}${durStr}`
+        }
+
+        if (remove) {
+          for (const t of targets) {
+            this.buffSystem.removeBuff(t, remove, 'devtools')
+          }
+          return `Removed '${remove}' from ${targets.length} target(s): ${targets.map((t) => t.id).join(', ')}`
+        }
+      },
+    )
+
+    registry.register(
+      'damage',
+      '[dev] damage [--target <id>] [--group <tag>] [--type <t1,t2,...>] <amount> — default target = player',
+      (args) => {
+        const positional = args._ as unknown[]
+        const raw = positional[positional.length - 1]
+        const amount = Number(raw)
+        if (!Number.isFinite(amount) || amount <= 0) {
+          return 'Usage: damage [--target <id>] [--group <tag>] [--type <t1,t2,...>] <amount>'
+        }
+        const types = this.parseDamageTypes(args.type)
+        const targets = this.resolveDevTargets(args.target, args.group)
+        if (targets.length === 0) return 'No matching entities.'
+        for (const t of targets) this.devDealDamage(t, amount, types)
+        const typeStr = types.length ? types.join('/') : 'raw'
+        return `Dealt ${amount} ${typeStr} damage to ${targets.length} target(s): ${targets.map((t) => t.id).join(', ')}`
+      },
+    )
+
+    registry.register(
+      'list-entities',
+      '[dev] Print entity list (id, type, group, hp/maxHp, alive)',
+      () => {
+        const all = this.entityMgr.getAll()
+        if (all.length === 0) return '(no entities)'
+        const lines = ['entities:']
+        for (const e of all) {
+          const maxHp = Math.round(this.buffSystem.getMaxHp(e))
+          const alive = e.alive ? 'alive' : 'dead'
+          lines.push(
+            `  ${e.id.padEnd(14)} type=${e.type.padEnd(6)} group=${(e.group || '-').padEnd(10)} hp=${e.hp}/${maxHp} ${alive}`,
+          )
+        }
+        return lines.join('\n')
+      },
+    )
+
+    registry.register(
+      'kill',
+      '[dev] kill [--target <id>] [--group <tag>] — sugar for `damage --type special 999999999`',
+      (args) => {
+        const targets = this.resolveDevTargets(args.target, args.group)
+        if (targets.length === 0) return 'No matching entities.'
+        for (const t of targets) this.devDealDamage(t, 999999999, ['special'])
+        return `Killed ${targets.length} target(s): ${targets.map((t) => t.id).join(', ')}`
+      },
+    )
+  }
+
+  /** Parse `--type t1,t2,...` CSV into a DamageType[]. Empty/undefined → []. */
+  private parseDamageTypes(raw: unknown): DamageType[] {
+    if (typeof raw !== 'string' || !raw.trim()) return []
+    return raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean) as DamageType[]
+  }
+
+  /**
+   * Resolve command `--target <id>` / `--group <tag>` into entity list.
+   * Precedence: --target (single) > --group (many) > default (player).
+   * Returns [] if a filter was specified but matched nothing.
+   */
+  private resolveDevTargets(targetArg: unknown, groupArg: unknown): Entity[] {
+    if (typeof targetArg === 'string' && targetArg.trim()) {
+      const e = this.entityMgr.get(targetArg.trim())
+      return e ? [e] : []
+    }
+    if (typeof groupArg === 'string' && groupArg.trim()) {
+      const tag = groupArg.trim()
+      return this.entityMgr.getAlive().filter((e) => e.group === tag)
+    }
+    return this.player ? [this.player] : []
+  }
+
+  /**
+   * Dev-only raw damage application. Does NOT go through potency/attack scaling.
+   * - `special` type bypasses invulnerable / damage_immunity (and won't be absorbed by shields here — keep it simple)
+   * - Non-special respects invul / damage_immunity (no-op if present)
+   * - Clamps hp to [0, maxHp]; emits `damage:dealt` so HUD log reflects the hit
+   */
+  private devDealDamage(target: Entity, amount: number, types: DamageType[]): void {
+    if (!target.alive) return
+    const isSpecial = types.includes('special')
+    const pseudoSource = { id: 'devtools' } as Entity
+    if (!isSpecial && (this.buffSystem.isInvulnerable(target) || this.buffSystem.hasDamageImmunity(target))) {
+      this.bus.emit('damage:invulnerable', {
+        source: pseudoSource,
+        target,
+        skill: { name: '[devtools]' },
+      })
+      return
+    }
+    target.hp = Math.max(0, target.hp - amount)
+    this.bus.emit('damage:dealt', {
+      source: pseudoSource,
+      target,
+      amount,
+      skill: { name: `[devtools]${types.length ? ' ' + types.join('/') : ''}` },
     })
   }
 }

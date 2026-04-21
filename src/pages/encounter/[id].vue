@@ -92,5 +92,3 @@ TowerEncounterRunner(
   border-radius: 4px;
 }
 </style>
-</content>
-</invoke>
